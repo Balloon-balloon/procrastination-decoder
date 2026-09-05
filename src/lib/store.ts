@@ -223,7 +223,7 @@ export function updateAchievements(data: AppData): AppData {
 
 export function createTask(
   data: AppData,
-  task: Omit<Task, "id" | "createdAt" | "completedAt" | "postponedCount" | "actualTime" | "dueDate"> & { dueDate?: string | null }
+  task: Omit<Task, "id" | "createdAt" | "completedAt" | "postponedCount" | "actualTime" | "dueDate" | "breakdownStatus" | "overallStrategy"> & { dueDate?: string | null }
 ): AppData {
   const newTask: Task = {
     ...task,

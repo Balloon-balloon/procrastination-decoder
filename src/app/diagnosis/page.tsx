@@ -126,6 +126,10 @@ export default function DiagnosisPage() {
         name: data.profile.name,
         personalityResult: null,
         createdAt: data.profile.createdAt,
+        totalFocusTime: 0,
+        totalTasksCompleted: 0,
+        streak: 0,
+        lastActiveDate: data.profile.lastActiveDate,
       },
     }));
     setShowConfirmClear(false);

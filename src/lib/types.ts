@@ -107,3 +107,20 @@ export interface AppData {
   moodEntries: MoodEntry[];
   achievements: Achievement[];
 }
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  password: string;
+  verified: boolean;
+  verificationToken?: string;
+  createdAt: string;
+  lastLoginAt: string;
+  isFirstLogin?: boolean;
+}
+
+export interface AuthState {
+  currentUserId: string | null;
+  users: User[];
+}

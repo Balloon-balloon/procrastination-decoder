@@ -6,6 +6,9 @@ import { addFocusSession, completeSubTask, getSubTaskById } from "@/lib/store";
 import { formatTime } from "@/lib/utils";
 import { SubTask } from "@/lib/types";
 import { PageTransition } from "@/components/Animations";
+import { useTimer } from "@/hooks/useTimer";
+import { motion, AnimatePresence } from "framer-motion";
+import { playCompleteSound } from "@/lib/sound";
 import {
   Play,
   Pause,
@@ -56,6 +59,7 @@ export default function FocusPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const subTaskId = searchParams.get("subTaskId");
+  const timer = useTimer();
 
   const [mode, setMode] = useState<keyof typeof MODES>("pomodoro");
   const [timeLeft, setTimeLeft] = useState(MODES.pomodoro.duration);
@@ -63,7 +67,10 @@ export default function FocusPage() {
   const [sessionStarted, setSessionStarted] = useState(false);
   const [sessionCompleted, setSessionCompleted] = useState(false);
   const [subTaskCompleted, setSubTaskCompleted] = useState(false);
+  const [showReturnMessage, setShowReturnMessage] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const leaveTimestampRef = useRef<number | null>(null);
+  const lastTimeLeftRef = useRef<number>(MODES.pomodoro.duration);
 
   // 查找当前子任务
   const currentSubTask: SubTask | null = subTaskId
@@ -132,6 +139,54 @@ export default function FocusPage() {
     };
   }, [isRunning, mode, modeConfig.duration, sessionStarted, update, currentSubTask]);
 
+  // 记录最后剩余时间
+  useEffect(() => {
+    lastTimeLeftRef.current = timeLeft;
+  }, [timeLeft]);
+
+  // Page Visibility API: 熄屏兜底
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        leaveTimestampRef.current = Date.now();
+        localStorage.setItem("pd-focus-leave", String(Date.now()));
+        localStorage.setItem("pd-focus-remaining", String(lastTimeLeftRef.current));
+      } else {
+        if (leaveTimestampRef.current && isRunning) {
+          const leaveMs = Date.now() - leaveTimestampRef.current;
+          const leaveSec = Math.floor(leaveMs / 1000);
+          const gracePeriod = timer.settings.gracePeriod;
+
+          // 时间戳差值法修正
+          const savedRemaining = parseInt(localStorage.getItem("pd-focus-remaining") || "0");
+          if (savedRemaining > 0) {
+            const corrected = Math.max(0, savedRemaining - leaveSec);
+            if (corrected !== timeLeft) {
+              setTimeLeft(corrected);
+            }
+          }
+
+          if (leaveSec > gracePeriod) {
+            if (timer.settings.autoContinue) {
+              setShowReturnMessage(true);
+              setTimeout(() => setShowReturnMessage(false), 3000);
+            } else {
+              timer.setShowReturnDialog(true);
+              timer.setLeaveDuration(leaveSec);
+            }
+          } else {
+            setShowReturnMessage(true);
+            setTimeout(() => setShowReturnMessage(false), 3000);
+          }
+        }
+        leaveTimestampRef.current = null;
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [isRunning, timeLeft, timer]);
+
   const handleModeChange = (newMode: keyof typeof MODES) => {
     setMode(newMode);
     setTimeLeft(MODES[newMode].duration);
@@ -170,6 +225,7 @@ export default function FocusPage() {
     : null;
 
   return (
+    <>
     <PageTransition>
     <div className="space-y-6 max-w-xl mx-auto">
       <div className="text-center">
@@ -423,5 +479,65 @@ export default function FocusPage() {
       )}
     </div>
     </PageTransition>
+
+    {/* 熄屏返回弹窗 */}
+    <AnimatePresence>
+      {timer.showReturnDialog && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            className="w-full max-w-sm rounded-2xl p-6 text-center"
+            style={{ background: "var(--bg-primary)" }}
+          >
+            <div className="text-4xl mb-3">⏰</div>
+            <h3 className="font-hand text-lg font-bold mb-2" style={{ color: "var(--color-ink)" }}>
+              你离开了 {timer.leaveDuration} 秒
+            </h3>
+            <p className="font-hand text-sm mb-5" style={{ color: "var(--text-muted)" }}>
+              要继续专注吗？
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={timer.continueAfterLeave}
+                className="btn-mint flex-1 text-sm font-hand"
+              >
+                继续
+              </button>
+              <button
+                onClick={timer.abandonAfterLeave}
+                className="flex-1 py-2.5 rounded-lg text-sm font-hand"
+                style={{ background: "rgba(43,58,103,0.06)", color: "var(--text-secondary)" }}
+              >
+                放弃
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* 返回消息提示 */}
+    <AnimatePresence>
+      {(showReturnMessage || timer.returnMessage) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-[150] px-5 py-2.5 rounded-xl text-sm font-hand font-bold"
+          style={{ background: "var(--color-neon-green)", color: "#fff", boxShadow: "0 4px 12px rgba(78,205,196,0.3)" }}
+        >
+          {timer.returnMessage || "欢迎回来，继续加油 💪"}
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   );
 }

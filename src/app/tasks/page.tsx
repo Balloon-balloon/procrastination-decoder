@@ -744,11 +744,11 @@ function TaskCard({
                 开始
               </button>
             )}
-            {task.status !== "completed" && task.breakdownStatus !== "loading" && (
+            {task.status !== "completed" && (
               <button
                 onClick={onBreakdown}
                 disabled={task.breakdownStatus === "loading"}
-                className="text-xs px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors flex items-center gap-1"
+                className="text-xs px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {task.breakdownStatus === "done" ? (
                   <>

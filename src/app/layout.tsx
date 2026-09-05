@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Navigation } from "@/components/Navigation";
+import { AppShell } from "@/components/AppShell";
 import { ToastProvider } from "@/components/Toast";
+import { DarkModeManager } from "@/components/DarkModeManager";
 
 export const metadata: Metadata = {
   title: "拖延解码器 | Procrastination Decoder",
@@ -15,15 +16,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body className="gradient-bg min-h-screen">
-        <div className="noise-overlay" />
+      <body className="paper-bg min-h-screen">
+        <DarkModeManager />
         <ToastProvider>
-          <Navigation />
-          <main className="md:ml-64 min-h-screen pb-20 md:pb-6">
-            <div className="max-w-5xl mx-auto p-4 md:p-8">
-              {children}
-            </div>
-          </main>
+          <AppShell>{children}</AppShell>
         </ToastProvider>
       </body>
     </html>

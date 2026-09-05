@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>拖延解码器 - 界面预览</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --divider: rgba(148, 163, 184, 0.2);
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background:
+    linear-gradient(135deg, rgba(248, 250, 252, 0.75) 0%, rgba(241, 245, 249, 0.7) 50%, rgba(226, 232, 240, 0.75) 100%),
+    url('public/bg-illustration.jpg');
+  background-size: cover;
+  background-position: center right;
+  background-attachment: fixed;
+  min-height: 100vh;
+  color: var(--text-primary);
+}
+.layout { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 256px;
+  min-height: 100vh;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  border-right: 1px solid var(--divider);
+  position: fixed;
+  left: 0; top: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 40;
+}
+.sidebar-header {
+  padding: 24px;
+}
+.logo-link { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.logo-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f97316, #7c3aed);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: bold; font-size: 18px;
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.4);
+}
+.logo-title { font-size: 18px; font-weight: bold; color: var(--text-primary); }
+.logo-sub { font-size: 12px; color: var(--text-muted); }
+.nav-items { flex: 1; padding: 0 12px; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 14px; font-weight: 500;
+  margin-bottom: 4px;
+  transition: all 0.2s;
+  position: relative;
+  cursor: pointer;
+}
+.nav-item:hover { color: var(--text-primary); background: rgba(255,255,255,0.3); }
+.nav-item.active {
+  color: var(--text-primary);
+  background: linear-gradient(90deg, rgba(249, 119, 22, 0.15), rgba(124, 58, 237, 0.08));
+  border: 1px solid rgba(249, 119, 22, 0.2);
+}
+.nav-icon { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; }
+.nav-item.active .nav-icon { color: #f97316; }
+.sidebar-footer { padding: 16px; }
+.version-card {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+.version-card p:first-child { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.version-card p:last-child { font-size: 12px; color: var(--text-subtle); }
+
+/* Main */
+.main {
+  margin-left: 256px;
+  flex: 1;
+  padding: 32px;
+  max-width: 960px;
+}
+.space-y > * + * { margin-top: 24px; }
+
+/* Glass card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+}
+.glass-card-pad { padding: 20px; }
+.glass-card-pad-lg { padding: 24px; }
+
+/* Welcome */
+.welcome h1 {
+  font-size: 36px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+.welcome .name {
+  font-weight: 800;
+  background: linear-gradient(135deg, #f97316, #ec4899, #8b5cf6, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.welcome .slogan {
+  font-size: 16px;
+  background: linear-gradient(135deg, #64748b, #94a3b8, #64748b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Mood */
+.mood-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.mood-title { font-size: 14px; font-weight: bold; }
+.mood-buttons { display: flex; gap: 8px; }
+.mood-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 0; border-radius: 12px; border: none;
+  background: transparent; cursor: pointer; transition: all 0.2s;
+}
+.mood-btn:hover { background: rgba(255, 255, 255, 0.5); }
+.mood-emoji { font-size: 24px; }
+.mood-label { font-size: 12px; color: var(--text-muted); }
+
+/* Personality card */
+.personality-card { display: flex; align-items: flex-start; gap: 16px; }
+.personality-emoji { font-size: 48px; }
+.personality-info { flex: 1; }
+.personality-name { font-size: 20px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.tag {
+  font-size: 12px; padding: 2px 8px; border-radius: 999px;
+  background: rgba(249, 119, 22, 0.15); color: #ea580c;
+  border: 1px solid rgba(249, 119, 22, 0.25);
+}
+.personality-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+
+/* Stat cards */
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.stat-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: 16px;
+  opacity: 0.5;
+  z-index: -1;
+}
+.stat-card.orange::before { background: linear-gradient(135deg, rgba(249, 115, 22, 0.12), rgba(239, 68, 68, 0.06)); }
+.stat-card.green::before { background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(16, 185, 129, 0.06)); }
+.stat-card.blue::before { background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(6, 182, 212, 0.06)); }
+.stat-card.purple::before { background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(236, 72, 153, 0.06)); }
+.stat-icon { width: 20px; height: 20px; margin-bottom: 8px; }
+.stat-icon.orange { color: #fb923c; }
+.stat-icon.green { color: #4ade80; }
+.stat-icon.blue { color: #60a5fa; }
+.stat-icon.purple { color: #c084fc; }
+.stat-value { font-size: 24px; font-weight: bold; }
+.stat-unit { font-size: 14px; color: var(--text-muted); font-weight: normal; margin-left: 4px; }
+.stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+/* Recommendation */
+.recommend-card {
+  border: 1px solid rgba(249, 119, 22, 0.25);
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+}
+.recommend-card::after {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 120px; height: 120px;
+  background: radial-gradient(circle, rgba(249, 119, 22, 0.15), transparent 70%);
+  border-radius: 50%;
+}
+.recommend-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: bold; color: #f97316;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+.recommend-title { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+.recommend-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+.recommend-meta { display: flex; gap: 16px; margin-bottom: 16px; font-size: 12px; }
+.recommend-meta-item { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot.green { background: #4ade80; }
+.micro-step {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 12px; padding: 12px;
+  margin-bottom: 16px;
+  border: 1px solid var(--divider);
+}
+.micro-step-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.micro-step-text { font-size: 14px; color: var(--text-secondary); }
+.start-btn {
+  width: 100%; padding: 12px;
+  border-radius: 12px; border: none;
+  background: linear-gradient(90deg, #f97316, #7c3aed);
+  color: white; font-size: 14px; font-weight: bold;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+/* Feature cards */
+.feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.feature-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex; align-items: center; gap: 16px;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+.feature-icon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.feature-icon.green { background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(16,185,129,0.04)); color: #4ade80; }
+.feature-icon.yellow { background: linear-gradient(135deg, rgba(234,179,8,0.15), rgba(249,115,22,0.04)); color: #facc15; }
+.feature-icon.blue { background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(6,182,212,0.04)); color: #60a5fa; }
+.feature-icon.purple { background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(236,72,153,0.04)); color: #c084fc; }
+.feature-title { font-weight: bold; margin-bottom: 2px; }
+.feature-desc { font-size: 12px; color: var(--text-muted); }
+.feature-arrow { color: var(--text-subtle); }
+
+/* Todo list */
+.todo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.todo-title { font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+.todo-link { font-size: 12px; color: var(--text-muted); text-decoration: none; }
+.todo-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 12px; border-radius: 12px;
+  transition: background 0.2s;
+}
+.todo-item:hover { background: rgba(255,255,255,0.3); }
+.todo-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.todo-text { flex: 1; font-size: 14px; color: var(--text-secondary); }
+.todo-date { font-size: 12px; color: var(--text-subtle); }
+
+/* Suggestions */
+.suggestion-item { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; }
+.suggestion-num { color: #f97316; font-weight: bold; }
+
+/* SVG icons */
+svg { display: inline-block; vertical-align: middle; }
+
+/* Label */
+.section-label {
+  display: inline-block;
+  background: rgba(249, 119, 22, 0.1);
+  color: #ea580c;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <a class="logo-link">
+        <div class="logo-icon">P</div>
+        <div>
+          <div class="logo-title">拖延解码器</div>
+          <div class="logo-sub">Procrastination Decoder</div>
+        </div>
+      </a>
+    </div>
+    <div class="nav-items">
+      <a class="nav-item active">
+        <span class="nav-icon">📊</span> 仪表盘
+      </a>
+      <a class="nav-item">
+        <span class="nav-icon">🧠</span> 人格测试
+      </a>
+      <a class="nav-item">
+        <span class="nav-icon">📋</span> 任务管理
+      </a>
+      <a class="nav-item">
+        <span class="nav-icon">⏱️</span> 专注模式
+      </a>
+      <a class="nav-item">
+        <span class="nav-icon">📈</span> 数据诊断
+      </a>
+      <a class="nav-item">
+        <span class="nav-icon">✨</span> AI 教练
+      </a>
+      <a class="nav-item">
+        <span class="nav-icon">🏆</span> 成就
+      </a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="version-card">
+        <p>v1.0.0 · 黑客松项目</p>
+        <p>解码拖延，重启行动</p>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="space-y">
+      <!-- Welcome -->
+      <div class="welcome">
+        <h1>
+          <span>欢迎回来，</span><span class="name">学习者</span>
+        </h1>
+        <p class="slogan">今天也要解码拖延，重启行动 ⚡</p>
+      </div>
+
+      <!-- Mood Check-in -->
+      <div class="glass-card glass-card-pad">
+        <div class="mood-header">
+          <span class="mood-title">今日心情</span>
+        </div>
+        <div class="mood-buttons">
+          <button class="mood-btn"><span class="mood-emoji">😄</span><span class="mood-label">超棒</span></button>
+          <button class="mood-btn"><span class="mood-emoji">🙂</span><span class="mood-label">不错</span></button>
+          <button class="mood-btn"><span class="mood-emoji">😐</span><span class="mood-label">一般</span></button>
+          <button class="mood-btn"><span class="mood-emoji">😔</span><span class="mood-label">不好</span></button>
+          <button class="mood-btn"><span class="mood-emoji">😢</span><span class="mood-label">糟糕</span></button>
+        </div>
+      </div>
+
+      <!-- Personality Test Prompt -->
+      <div class="glass-card glass-card-pad-lg" style="cursor: pointer; transition: all 0.3s;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div style="width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, rgba(249,119,22,0.2), rgba(124,58,237,0.1)); display: flex; align-items: center; justify-content: center; font-size: 28px;">🧠</div>
+          <div style="flex: 1;">
+            <div style="font-size: 20px; font-weight: bold; margin-bottom: 4px;">第一步：测测你的拖延人格</div>
+            <div style="font-size: 14px; color: var(--text-muted);">8道题，2分钟，发现你的拖延模式</div>
+          </div>
+          <span style="color: var(--text-subtle); font-size: 20px;">›</span>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-grid">
+        <div class="stat-card orange">
+          <div class="stat-icon orange">🔥</div>
+          <div class="stat-value">3<span class="stat-unit">天</span></div>
+          <div class="stat-label">连续天数</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon green">🎯</div>
+          <div class="stat-value">5<span class="stat-unit">/ 12</span></div>
+          <div class="stat-label">已完成任务</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon blue">⏱️</div>
+          <div class="stat-value">120<span class="stat-unit">分钟</span></div>
+          <div class="stat-label">专注时长</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-icon purple">📈</div>
+          <div class="stat-value">42<span class="stat-unit">%</span></div>
+          <div class="stat-label">完成率</div>
+        </div>
+      </div>
+
+      <!-- Today's Recommendation -->
+      <div class="glass-card recommend-card">
+        <div class="recommend-badge">🚀 今日启动推荐</div>
+        <div class="recommend-title">复习微积分第一章公式</div>
+        <div class="recommend-sub">来自：微积分二重积分作业</div>
+        <div class="recommend-meta">
+          <div class="recommend-meta-item">
+            <div class="dot green"></div>
+            <span>阻力 2/10 · 低阻力</span>
+          </div>
+          <div class="recommend-meta-item">
+            <span>🕐</span>
+            <span>约15分钟</span>
+          </div>
+        </div>
+        <div class="micro-step">
+          <div class="micro-step-label">⚡ 5分钟启动目标</div>
+          <div class="micro-step-text">打开课本，翻到第一章，阅读前3个公式定义</div>
+        </div>
+        <button class="start-btn">▶ 现在就开始（15分钟）</button>
+      </div>
+
+      <!-- Today's Todo -->
+      <div class="glass-card glass-card-pad-lg">
+        <div class="todo-header">
+          <span class="todo-title">📋 今日待办</span>
+          <a class="todo-link">查看全部 ›</a>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div class="todo-item">
+            <div class="todo-dot" style="background: #ef4444;"></div>
+            <span class="todo-text">微积分二重积分作业</span>
+            <span class="todo-date">9月3日</span>
+          </div>
+          <div class="todo-item">
+            <div class="todo-dot" style="background: #f97316;"></div>
+            <span class="todo-text">英语阅读理解练习</span>
+            <span class="todo-date">9月4日</span>
+          </div>
+          <div class="todo-item">
+            <div class="todo-dot" style="background: #f59e0b;"></div>
+            <span class="todo-text">数据结构实验报告</span>
+            <span class="todo-date">9月5日</span>
+          </div>
+          <div class="todo-item">
+            <div class="todo-dot" style="background: #10b981;"></div>
+            <span class="todo-text">整理课堂笔记</span>
+            <span class="todo-date"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Cards -->
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon green">📋</div>
+          <div style="flex: 1;">
+            <div class="feature-title">任务管理</div>
+            <div class="feature-desc">创建、追踪、分析你的任务完成模式</div>
+          </div>
+          <span class="feature-arrow">›</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon yellow">⚡</div>
+          <div style="flex: 1;">
+            <div class="feature-title">专注模式</div>
+            <div class="feature-desc">番茄钟 + 深度工作，告别拖延</div>
+          </div>
+          <span class="feature-arrow">›</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon blue">📈</div>
+          <div style="flex: 1;">
+            <div class="feature-title">数据诊断</div>
+            <div class="feature-desc">可视化你的拖延模式与趋势</div>
+          </div>
+          <span class="feature-arrow">›</span>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon purple">✨</div>
+          <div style="flex: 1;">
+            <div class="feature-title">AI 教练</div>
+            <div class="feature-desc">个性化建议，破解你的拖延循环</div>
+          </div>
+          <span class="feature-arrow">›</span>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>
