@@ -138,7 +138,10 @@ export function loadData(): AppData {
     const defaults = getDefaultData();
     return {
       profile: { ...defaults.profile, ...data.profile },
-      tasks: data.tasks || [],
+      tasks: (data.tasks || []).map((task) => ({
+        ...task,
+        estimatedUnit: task.estimatedUnit || "minute",
+      })),
       subTasks: data.subTasks || [],
       focusSessions: data.focusSessions || [],
       moodEntries: data.moodEntries || [],

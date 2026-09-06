@@ -1,6 +1,6 @@
 "use client";
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { PageTransition } from "@/components/Animations";
 import {
   registerUserWithEmail,
@@ -27,7 +27,6 @@ import Link from "next/link";
 
 function LoginContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { currentUser, switchToUser, logout } = useAppData();
   const { showToast } = useToast();
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -51,6 +50,7 @@ function LoginContent() {
 
     await new Promise((r) => setTimeout(r, 500));
 
+    try {
     if (mode === "register") {
       if (password !== confirmPassword) {
         setError("两次输入的密码不一致");
@@ -58,7 +58,7 @@ function LoginContent() {
         setLoading(false);
         return;
       }
-      const result = registerUserWithEmail(username, email, password);
+      const result = await registerUserWithEmail(username, email, password);
       if (result.success && result.user) {
         // 如果已自动验证（开发模式），直接登录
         if (result.user.verified) {
@@ -67,39 +67,21 @@ function LoginContent() {
           switchToUser(result.user);
           setTimeout(() => router.push("/"), 800);
         } else {
-          // 生产模式：调用 API 发送验证邮件
-          try {
-            const res = await fetch("/api/auth/register", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: result.user.email,
-                username: result.user.username,
-                verificationToken: result.user.verificationToken,
-              }),
-            });
-            const data = await res.json();
-
-            if (data.verifyUrl) {
-              setSuccess(`验证邮件已发送到 ${email}，请查收邮箱`);
-            } else {
-              setSuccess(`验证邮件已发送到 ${email}，请查收邮箱并点击验证链接完成注册`);
-            }
-            setShowResend(true);
-            setUnverifiedEmail(email);
-            showToast("验证邮件已发送 📧", "success");
-          } catch {
-            setSuccess("注册成功，但邮件发送失败。请联系管理员或重试。");
-            setShowResend(true);
-            setUnverifiedEmail(email);
-          }
+          setSuccess(`验证邮件已发送到 ${email}，请查收邮箱并点击验证链接完成注册`);
+          setShowResend(true);
+          setUnverifiedEmail(email);
+          showToast("验证邮件已发送 📧", "success");
         }
       } else {
         setError(result.message);
+        if (result.requiresVerification) {
+          setShowResend(true);
+          setUnverifiedEmail(result.user?.email || email);
+        }
         playErrorSound();
       }
     } else {
-      const result = loginUser(username, password);
+      const result = await loginUser(username, password);
       if (result.success && result.user) {
         setSuccess("登录成功！");
         showToast(`欢迎回来，${result.user.username}`, "success");
@@ -107,32 +89,27 @@ function LoginContent() {
         setTimeout(() => router.push("/"), 500);
       } else {
         setError(result.message);
-        if (!result.user?.verified) {
+        if (result.user && !result.user.verified) {
           setShowResend(true);
           setUnverifiedEmail(result.user?.email || username);
         }
         playErrorSound();
       }
     }
-    setLoading(false);
+    } catch (error) {
+      console.error("Authentication request failed:", error);
+      setError("暂时无法连接账号服务，请检查网络后重试");
+      playErrorSound();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResend = async () => {
     if (!unverifiedEmail) return;
     playClickSound();
-    const result = resendVerification(unverifiedEmail);
-    if (result.success && result.user) {
-      try {
-        await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: result.user.email,
-            username: result.user.username,
-            verificationToken: result.user.verificationToken,
-          }),
-        });
-      } catch {}
+    const result = await resendVerification(unverifiedEmail);
+    if (result.success) {
       showToast("验证邮件已重新发送 📧", "success");
       setSuccess(`验证邮件已重新发送到 ${unverifiedEmail}`);
     } else {

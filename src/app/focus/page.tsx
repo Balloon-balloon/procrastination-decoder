@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppData } from "@/hooks/useAppData";
+import { formatEstimatedTime } from "@/lib/time";
 import { useToast } from "@/components/Toast";
 import { addFocusSession, completeSubTask, getSubTaskById, updateTask } from "@/lib/store";
 import { formatTime } from "@/lib/utils";
@@ -402,7 +403,7 @@ function FocusPageContent() {
                   <p className="text-xs text-dark-400">正在专注</p>
                   <p className="text-sm font-medium text-white truncate">{boundTask.title}</p>
                   <p className="text-[10px] text-dark-500 mt-0.5">
-                    已投入 {boundTask.actualTime} 分钟 · 预估 {boundTask.estimatedTime} 分钟
+                    已投入 {boundTask.actualTime} 分钟 · 预估 {formatEstimatedTime(boundTask.estimatedTime, boundTask.estimatedUnit)}
                   </p>
                 </div>
               </div>
@@ -444,7 +445,7 @@ function FocusPageContent() {
                   >
                     <Target className="w-3.5 h-3.5 text-dark-400 flex-shrink-0" />
                     <span className="text-sm text-dark-200 truncate flex-1">{task.title}</span>
-                    <span className="text-[10px] text-dark-500 flex-shrink-0">{task.estimatedTime}min</span>
+                    <span className="text-[10px] text-dark-500 flex-shrink-0">{formatEstimatedTime(task.estimatedTime, task.estimatedUnit)}</span>
                   </button>
                 ))
               )}

@@ -1,13 +1,16 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageTransition, StaggerContainer, FadeInItem } from "@/components/Animations";
 import { UserX, UserCheck, Bell, CheckCircle2, ChevronRight, Zap, Target, Clock } from "lucide-react";
 import { playClickSound, playCompleteSound } from "@/lib/sound";
 import { useToast } from "@/components/Toast";
 import { useAppData } from "@/hooks/useAppData";
+import { apiRequest } from "@/lib/api";
 
 interface Partner {
+  id: string;
+  kind: "real" | "virtual";
   emoji: string;
   name: string;
   goal: string;
@@ -17,19 +20,26 @@ interface Partner {
   activeTime: string;
 }
 
-const MOCK_PARTNERS: Partner[] = [
-  { emoji: "🦊", name: "狐狸同学", goal: "考研上岸", tags: ["考研", "数学", "英语"], completedTasks: 7, totalTasks: 10, activeTime: "晚上" },
-  { emoji: "🐼", name: "熊猫同学", goal: "期末全A", tags: ["期末", "论文", "编程"], completedTasks: 5, totalTasks: 8, activeTime: "上午" },
-  { emoji: "🦉", name: "猫头鹰同学", goal: "四六级500+", tags: ["四六级", "听力"], completedTasks: 9, totalTasks: 10, activeTime: "晚上" },
-  { emoji: "🐰", name: "兔子同学", goal: "学会React", tags: ["编程", "前端"], completedTasks: 3, totalTasks: 6, activeTime: "下午" },
+const VIRTUAL_PARTNERS: Partner[] = [
+  { id: "virtual-fox", kind: "virtual", emoji: "🦊", name: "狐狸同学", goal: "考研上岸", tags: ["考研", "数学", "英语"], completedTasks: 7, totalTasks: 10, activeTime: "晚上" },
+  { id: "virtual-panda", kind: "virtual", emoji: "🐼", name: "熊猫同学", goal: "期末全A", tags: ["期末", "论文", "编程"], completedTasks: 5, totalTasks: 8, activeTime: "上午" },
+  { id: "virtual-owl", kind: "virtual", emoji: "🦉", name: "猫头鹰同学", goal: "四六级500+", tags: ["四六级", "听力"], completedTasks: 9, totalTasks: 10, activeTime: "晚上" },
+  { id: "virtual-rabbit", kind: "virtual", emoji: "🐰", name: "兔子同学", goal: "学会React", tags: ["编程", "前端"], completedTasks: 3, totalTasks: 6, activeTime: "下午" },
 ];
+
+interface MatchResponse {
+  status: "waiting" | "matched" | "error";
+  message?: string;
+  partner?: Partner;
+  notifications?: string[];
+}
 
 const TAGS_STUDENT = ["考研", "高考", "四六级", "期末论文", "编程学习", "数学", "英语", "专业课"];
 const TAGS_WORKER = ["项目冲刺", "技能提升", "副业", "健康作息", "考证", "PPT"];
 
 export default function PartnerPage() {
   const { showToast } = useToast();
-  const { data } = useAppData();
+  const { data, currentUser } = useAppData();
   const [matched, setMatched] = useState<Partner | null>(null);
   const [matching, setMatching] = useState(false);
   const [myTags, setMyTags] = useState<string[]>([]);
@@ -39,7 +49,7 @@ export default function PartnerPage() {
   const [highFives, setHighFives] = useState(0);
   const [notifications, setNotifications] = useState<string[]>([]);
 
-  const todayKey = `pd-partner-${new Date().toDateString()}`;
+  const todayKey = `pd-partner-${currentUser?.id || "guest"}-${new Date().toDateString()}`;
 
   useEffect(() => {
     const saved = localStorage.getItem(todayKey);
@@ -58,7 +68,28 @@ export default function PartnerPage() {
     localStorage.setItem(todayKey, JSON.stringify({ partner, tags, goal, paused: isPaused }));
   };
 
-  const handleMatch = () => {
+  const chooseVirtualPartner = () => {
+    const scored = VIRTUAL_PARTNERS.map((partner) => ({
+      partner,
+      score: partner.tags.filter((tag) => myTags.includes(tag)).length,
+    })).sort((a, b) => b.score - a.score);
+    return scored[0].partner;
+  };
+
+  const finishMatch = (partner: Partner) => {
+    setMatched(partner);
+    saveState(partner, myTags, myGoal, paused);
+    setMatching(false);
+    playCompleteSound();
+    showToast(
+      partner.kind === "real"
+        ? `真人匹配成功！你的今日学伴是 ${partner.name}`
+        : `暂未等到真人，已为你安排虚拟学伴 ${partner.name}`,
+      "success"
+    );
+  };
+
+  const handleMatch = async () => {
     if (paused) {
       showToast("今日已暂停匹配", "warning");
       return;
@@ -72,22 +103,50 @@ export default function PartnerPage() {
     setMatching(true);
     setShowSetup(false);
 
-    // 模拟匹配延迟
-    setTimeout(() => {
-      // 找标签最相似的
-      const scored = MOCK_PARTNERS.map((p) => ({
-        partner: p,
-        score: p.tags.filter((t) => myTags.includes(t)).length,
-      }));
-      scored.sort((a, b) => b.score - a.score);
-      const best = scored[0].partner;
+    if (!currentUser) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      finishMatch(chooseVirtualPartner());
+      showToast("登录后才能优先匹配真人学伴", "warning");
+      return;
+    }
 
-      setMatched(best);
-      saveState(best, myTags, myGoal, paused);
-      setMatching(false);
-      playCompleteSound();
-      showToast("匹配成功！你的今日学伴是 " + best.name, "success");
-    }, 2000);
+    try {
+      let result = await apiRequest<MatchResponse>("/api/partner/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          tags: myTags,
+          goal: myGoal,
+          completedTasks: data.tasks.filter((task) => task.status === "completed").length,
+          totalTasks: data.tasks.length,
+        }),
+      });
+
+      for (let attempt = 0; result.status === "waiting" && attempt < 5; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        result = await apiRequest<MatchResponse>(`/api/partner/match?userId=${encodeURIComponent(currentUser.id)}`);
+      }
+
+      if (result.status === "matched" && result.partner) {
+        finishMatch(result.partner);
+        return;
+      }
+
+      const cancellation = await apiRequest<MatchResponse>("/api/partner/match", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: currentUser.id, action: "cancel" }),
+      });
+      if (cancellation.status === "matched" && cancellation.partner) {
+        finishMatch(cancellation.partner);
+        return;
+      }
+    } catch (error) {
+      console.error("Real partner matching failed:", error);
+    }
+
+    finishMatch(chooseVirtualPartner());
   };
 
   const toggleTag = (tag: string) => {
@@ -97,11 +156,19 @@ export default function PartnerPage() {
     );
   };
 
-  const handleHighFive = () => {
+  const handleHighFive = async () => {
     playClickSound();
     setHighFives((h) => h + 1);
-    showToast("击掌成功！对方会收到的 👏", "success");
-    // 模拟对方也击掌
+    if (matched?.kind === "real" && currentUser) {
+      const result = await apiRequest<{ success: boolean; message?: string }>("/api/partner/match", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: currentUser.id, action: "high-five" }),
+      });
+      showToast(result.success ? "击掌成功！对方会收到的 👏" : result.message || "击掌发送失败", result.success ? "success" : "warning");
+      return;
+    }
+    showToast("已和虚拟学伴击掌 👏", "success");
     setTimeout(() => {
       setNotifications((prev) => [
         ...prev,
@@ -119,7 +186,7 @@ export default function PartnerPage() {
 
   // 模拟对方完成任务的进度更新
   useEffect(() => {
-    if (!matched) return;
+    if (!matched || matched.kind === "real") return;
     const interval = setInterval(() => {
       if (Math.random() < 0.15 && matched.completedTasks < matched.totalTasks) {
         const newCompleted = matched.completedTasks + 1;
@@ -135,6 +202,17 @@ export default function PartnerPage() {
     return () => clearInterval(interval);
   }, [matched]);
 
+  useEffect(() => {
+    if (matched?.kind !== "real" || !currentUser) return;
+    const refresh = async () => {
+      const result = await apiRequest<MatchResponse>(`/api/partner/match?userId=${encodeURIComponent(currentUser.id)}`);
+      if (result.status === "matched" && result.partner) setMatched(result.partner);
+      if (result.notifications?.length) setNotifications((previous) => [...previous, ...result.notifications!]);
+    };
+    const interval = setInterval(() => { void refresh(); }, 5000);
+    return () => clearInterval(interval);
+  }, [matched?.kind, currentUser]);
+
   const myCompletedTasks = data.tasks.filter((t) => t.status === "completed").length;
   const myTotalTasks = data.tasks.length;
   const myProgress = myTotalTasks > 0 ? Math.round((myCompletedTasks / myTotalTasks) * 100) : 0;
@@ -148,7 +226,7 @@ export default function PartnerPage() {
             STUDY PARTNER
           </h1>
           <p className="font-hand text-sm" style={{ color: "var(--text-muted)" }}>
-            🤝 每日学伴 · 社交责任驱动 · 次日重新匹配
+            🤝 真人优先 · 无真人时虚拟陪伴 · 次日重新匹配
           </p>
         </div>
 
@@ -239,7 +317,7 @@ export default function PartnerPage() {
                   style={{ borderTopColor: "var(--color-neon-orange)", borderRightColor: "var(--color-neon-green)" }}
                 />
                 <p className="font-hand text-sm" style={{ color: "var(--color-apricot)" }}>
-                  正在为你匹配今日学伴...
+                  正在优先寻找在线真人学伴...
                 </p>
               </div>
             </motion.div>
@@ -281,6 +359,15 @@ export default function PartnerPage() {
               <h2 className="font-hand text-lg font-bold" style={{ color: "var(--color-ink)" }}>
                 {matched.name}
               </h2>
+              <span
+                className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-hand font-bold mb-2"
+                style={{
+                  background: matched.kind === "real" ? "rgba(78,205,196,0.18)" : "rgba(43,58,103,0.1)",
+                  color: matched.kind === "real" ? "#2E9A92" : "var(--text-muted)",
+                }}
+              >
+                {matched.kind === "real" ? "真人在线" : "虚拟陪伴"}
+              </span>
               <p className="font-hand text-xs mb-3" style={{ color: "var(--text-muted)" }}>
                 目标：{matched.goal}
               </p>

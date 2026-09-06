@@ -39,6 +39,8 @@ export interface SubTask {
   completedAt: string | null;
 }
 
+export type EstimatedTimeUnit = "minute" | "day" | "week";
+
 export interface Task {
   id: string;
   title: string;
@@ -47,6 +49,7 @@ export interface Task {
   status: "todo" | "in-progress" | "completed" | "postponed";
   category: string;
   estimatedTime: number;
+  estimatedUnit: EstimatedTimeUnit;
   actualTime: number;
   createdAt: string;
   completedAt: string | null;
@@ -116,7 +119,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  password: string;
+  password?: string;
   verified: boolean;
   verificationToken?: string;
   createdAt: string;

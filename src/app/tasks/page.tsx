@@ -15,8 +15,9 @@ import {
   startSubTask,
   deleteSubTask,
 } from "@/lib/store";
-import { Task, SubTask } from "@/lib/types";
+import { EstimatedTimeUnit, Task, SubTask } from "@/lib/types";
 import { formatDate, getEffectivePriority } from "@/lib/utils";
+import { formatEstimatedTime } from "@/lib/time";
 import { TaskBreakdownResult } from "@/components/TaskBreakdownResult";
 import { PageTransition, StaggerContainer, FadeInItem, HoverCard } from "@/components/Animations";
 import {
@@ -63,6 +64,7 @@ export default function TasksPage() {
     priority: "auto" as Task["priority"],
     category: "学习",
     estimatedTime: 30,
+    estimatedUnit: "minute" as EstimatedTimeUnit,
     tags: [] as string[],
     dueDate: "",
   });
@@ -78,6 +80,7 @@ export default function TasksPage() {
     priority: "auto" as Task["priority"],
     category: "学习",
     estimatedTime: 30,
+    estimatedUnit: "minute" as EstimatedTimeUnit,
     dueDate: "" as string,
     tags: [] as string[],
   });
@@ -90,6 +93,7 @@ export default function TasksPage() {
       priority: task.priority,
       category: task.category,
       estimatedTime: task.estimatedTime,
+      estimatedUnit: task.estimatedUnit || "minute",
       dueDate: task.dueDate || "",
       tags: task.tags || [],
     });
@@ -104,6 +108,7 @@ export default function TasksPage() {
         priority: editForm.priority,
         category: editForm.category,
         estimatedTime: editForm.estimatedTime,
+        estimatedUnit: editForm.estimatedUnit,
         dueDate: editForm.dueDate || null,
         tags: editForm.tags,
       })
@@ -139,6 +144,7 @@ export default function TasksPage() {
         status: "todo",
         category: newTask.category,
         estimatedTime: newTask.estimatedTime,
+        estimatedUnit: newTask.estimatedUnit,
         tags: newTask.tags,
         dueDate: newTask.dueDate || null,
         attachments: uploadedFiles.length > 0 ? uploadedFiles.map(f => ({ name: f.name, type: f.type, content: f.content })) : undefined,
@@ -151,6 +157,7 @@ export default function TasksPage() {
       priority: "medium",
       category: "学习",
       estimatedTime: 30,
+      estimatedUnit: "minute",
       tags: [],
       dueDate: "",
     });
@@ -307,15 +314,25 @@ export default function TasksPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-dark-400 mb-1 block">预估时间（分钟）</label>
-                <input
-                  type="number"
-                  value={newTask.estimatedTime}
-                  onChange={(e) =>
-                    setNewTask({ ...newTask, estimatedTime: parseInt(e.target.value) || 0 })
-                  }
-                  className="w-full px-3 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
-                />
+                <label className="text-xs text-dark-400 mb-1 block">预估时间</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={newTask.estimatedTime}
+                    onChange={(e) => setNewTask({ ...newTask, estimatedTime: parseInt(e.target.value) || 0 })}
+                    className="min-w-0 flex-1 px-3 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
+                  />
+                  <select
+                    value={newTask.estimatedUnit}
+                    onChange={(e) => setNewTask({ ...newTask, estimatedUnit: e.target.value as EstimatedTimeUnit })}
+                    className="w-24 px-2 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
+                  >
+                    <option value="minute">分钟</option>
+                    <option value="day">天</option>
+                    <option value="week">周</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="text-xs text-dark-400 mb-1 block">截止日期</label>
@@ -488,15 +505,25 @@ export default function TasksPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-dark-400 mb-1 block">预估时间（分钟）</label>
-                  <input
-                    type="number"
-                    value={editForm.estimatedTime}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, estimatedTime: parseInt(e.target.value) || 0 })
-                    }
-                    className="w-full px-3 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
-                  />
+                  <label className="text-xs text-dark-400 mb-1 block">预估时间</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={editForm.estimatedTime}
+                      onChange={(e) => setEditForm({ ...editForm, estimatedTime: parseInt(e.target.value) || 0 })}
+                      className="min-w-0 flex-1 px-3 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
+                    />
+                    <select
+                      value={editForm.estimatedUnit}
+                      onChange={(e) => setEditForm({ ...editForm, estimatedUnit: e.target.value as EstimatedTimeUnit })}
+                      className="w-24 px-2 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
+                    >
+                      <option value="minute">分钟</option>
+                      <option value="day">天</option>
+                      <option value="week">周</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-dark-400 mb-1 block">截止日期</label>
@@ -792,7 +819,7 @@ function TaskCard({
               <Calendar className="w-3 h-3" /> {formatDate(task.createdAt)}
             </span>
             <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> 预估 {task.estimatedTime} 分钟
+              <Clock className="w-3 h-3" /> 预估 {formatEstimatedTime(task.estimatedTime, task.estimatedUnit)}
             </span>
             {task.actualTime > 0 && (
               <span className="flex items-center gap-1 text-accent-400">

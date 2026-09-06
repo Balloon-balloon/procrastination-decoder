@@ -1,7 +1,8 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, ListTodo, Timer, BarChart3, ChevronRight, X, Sparkles } from "lucide-react";
+import { Brain, ListTodo, Timer, BarChart3, ChevronRight, Sparkles } from "lucide-react";
+import { markFirstLoginDone } from "@/lib/auth";
 
 const STEPS = [
   {
@@ -46,18 +47,13 @@ export function OnboardingGuide() {
   const [show, setShow] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
-  const observerRef = useRef<MutationObserver | null>(null);
-
   useEffect(() => {
-    const shouldShow = localStorage.getItem("pd-onboarding-done");
-    if (shouldShow) return;
-
     const checkReady = () => {
       const user = localStorage.getItem("procrastination-decoder-auth");
       if (!user) return;
       const parsed = JSON.parse(user);
       const currentUser = parsed.users?.find((u: any) => u.id === parsed.currentUserId);
-      if (currentUser?.isFirstLogin) {
+      if (currentUser?.isFirstLogin && !localStorage.getItem(`pd-onboarding-done-${currentUser.id}`)) {
         setTimeout(() => setShow(true), 1000);
       }
     };
@@ -69,27 +65,29 @@ export function OnboardingGuide() {
 
   useEffect(() => {
     if (!show) return;
-    updateTargetRect();
-    window.addEventListener("resize", updateTargetRect);
-    window.addEventListener("scroll", updateTargetRect, true);
+    focusTarget();
+    window.addEventListener("resize", measureTarget);
+    window.addEventListener("scroll", measureTarget, true);
     return () => {
-      window.removeEventListener("resize", updateTargetRect);
-      window.removeEventListener("scroll", updateTargetRect, true);
+      window.removeEventListener("resize", measureTarget);
+      window.removeEventListener("scroll", measureTarget, true);
     };
   }, [show, stepIndex]);
 
-  const updateTargetRect = () => {
+  const measureTarget = () => {
     const step = STEPS[stepIndex];
     if (!step) return;
     const el = document.querySelector(step.selector) as HTMLElement;
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-      setTimeout(() => {
-        setTargetRect(el.getBoundingClientRect());
-      }, 300);
-    } else {
-      setTargetRect(null);
-    }
+    setTargetRect(el ? el.getBoundingClientRect() : null);
+  };
+
+  const focusTarget = () => {
+    setTargetRect(null);
+    const step = STEPS[stepIndex];
+    const el = step ? document.querySelector(step.selector) as HTMLElement | null : null;
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    setTimeout(measureTarget, 300);
   };
 
   const handleNext = () => {
@@ -101,16 +99,12 @@ export function OnboardingGuide() {
   };
 
   const handleFinish = () => {
-    localStorage.setItem("pd-onboarding-done", "true");
-    // 标记首次登录完成
     const raw = localStorage.getItem("procrastination-decoder-auth");
     if (raw) {
       const state = JSON.parse(raw);
       if (state.currentUserId) {
-        state.users = state.users.map((u: any) =>
-          u.id === state.currentUserId ? { ...u, isFirstLogin: false } : u
-        );
-        localStorage.setItem("procrastination-decoder-auth", JSON.stringify(state));
+        localStorage.setItem(`pd-onboarding-done-${state.currentUserId}`, "true");
+        markFirstLoginDone(state.currentUserId);
       }
     }
     setShow(false);
@@ -125,7 +119,6 @@ export function OnboardingGuide() {
   const getBubbleStyle = (): React.CSSProperties => {
     if (!targetRect) return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
     const rect = targetRect;
-    const space = 320;
     const bubbleWidth = 300;
     const bubbleHeight = 180;
     let top = rect.bottom + 12;
@@ -147,18 +140,30 @@ export function OnboardingGuide() {
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[300]"
         >
-          {/* 遮罩 */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: "rgba(0,0,0,0.6)",
-              backdropFilter: "blur(2px)",
-              clipPath: targetRect
-                ? `polygon(0 0, 0 ${targetRect.top - 6}px, ${targetRect.left - 6}px ${targetRect.top - 6}px, ${targetRect.left - 6}px ${targetRect.bottom + 6}px, 0 ${targetRect.bottom + 6}px, 0 100%, 100% 100%, 100% ${targetRect.bottom + 6}px, ${targetRect.right + 6}px ${targetRect.bottom + 6}px, ${targetRect.right + 6}px ${targetRect.top - 6}px, 100% ${targetRect.top - 6}px, 100% 0)`
-                : "none",
-              transition: "clip-path 0.3s ease",
-            }}
-          />
+          {/* 使用 SVG mask 精确挖出目标区域，避免多边形自交造成整行变清晰 */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
+            <defs>
+              <mask id="onboarding-spotlight-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
+                <rect width="100%" height="100%" fill="white" />
+                {targetRect && (
+                  <rect
+                    x={Math.max(0, targetRect.left - 6)}
+                    y={Math.max(0, targetRect.top - 6)}
+                    width={targetRect.width + 12}
+                    height={targetRect.height + 12}
+                    rx="10"
+                    fill="black"
+                  />
+                )}
+              </mask>
+            </defs>
+            <rect
+              width="100%"
+              height="100%"
+              fill="rgba(0,0,0,0.64)"
+              mask="url(#onboarding-spotlight-mask)"
+            />
+          </svg>
 
           {/* 高亮框 */}
           {targetRect && (

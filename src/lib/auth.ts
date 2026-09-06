@@ -1,25 +1,20 @@
 import { User, AuthState } from "./types";
-import { generateId } from "./utils";
+import { apiRequest } from "./api";
 
 const AUTH_STORAGE_KEY = "procrastination-decoder-auth";
 const USER_DATA_PREFIX = "procrastination-decoder-user-";
 
-// ========== 认证状态管理 ==========
-
 export function loadAuthState(): AuthState {
-  if (typeof window === "undefined") {
-    return { currentUserId: null, users: [] };
-  }
+  if (typeof window === "undefined") return { currentUserId: null, users: [] };
   try {
     const raw = localStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return { currentUserId: null, users: [] };
     const state = JSON.parse(raw) as AuthState;
-    // 兼容旧数据：补全新字段
-    state.users = state.users.map((u) => ({
-      ...u,
-      email: u.email || "",
-      verified: u.verified ?? true,
-      isFirstLogin: u.isFirstLogin ?? false,
+    state.users = (state.users || []).map((user) => ({
+      ...user,
+      email: user.email || "",
+      verified: user.verified ?? true,
+      isFirstLogin: user.isFirstLogin ?? false,
     }));
     return state;
   } catch {
@@ -31,8 +26,8 @@ export function saveAuthState(state: AuthState): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
-  } catch (e) {
-    console.error("Failed to save auth state:", e);
+  } catch (error) {
+    console.error("Failed to save auth state:", error);
   }
 }
 
@@ -44,157 +39,82 @@ export interface AuthResult {
   success: boolean;
   message: string;
   user?: User;
+  requiresVerification?: boolean;
 }
 
-// ========== 邮箱格式校验 ==========
-
-export function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+function upsertSessionUser(user: User, makeCurrent: boolean): void {
+  const state = loadAuthState();
+  const safeUser = { ...user, password: undefined };
+  const users = state.users.some((item) => item.id === user.id)
+    ? state.users.map((item) => (item.id === user.id ? safeUser : item))
+    : [...state.users.filter((item) => item.email !== user.email), safeUser];
+  saveAuthState({ currentUserId: makeCurrent ? user.id : state.currentUserId, users });
 }
 
-// ========== 注册（客户端：保存用户 + 标记未验证） ==========
-
-export function registerUserWithEmail(
+export async function registerUserWithEmail(
   username: string,
   email: string,
   password: string
-): AuthResult {
-  const state = loadAuthState();
-
-  if (!username.trim()) return { success: false, message: "用户名不能为空" };
-  if (username.length < 2) return { success: false, message: "用户名至少2个字符" };
-  if (!isValidEmail(email)) return { success: false, message: "邮箱格式不正确" };
-  if (!password) return { success: false, message: "密码不能为空" };
-  if (password.length < 4) return { success: false, message: "密码至少4个字符" };
-
-  if (state.users.some((u) => u.username === username)) {
-    return { success: false, message: "用户名已存在" };
-  }
-  if (state.users.some((u) => u.email === email)) {
-    return { success: false, message: "该邮箱已注册" };
-  }
-
-  const verificationToken = generateId() + generateId();
-
-  // 开发模式（无 SMTP 配置）自动验证
-  const isDev = typeof window !== "undefined" && window.location.hostname === "localhost";
-  const autoVerified = isDev;
-
-  const newUser: User = {
-    id: generateId(),
-    username: username.trim(),
-    email: email.trim(),
-    password,
-    verified: autoVerified,
-    verificationToken: autoVerified ? undefined : verificationToken,
-    createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(),
-    isFirstLogin: autoVerified,
-  };
-
-  const newState: AuthState = {
-    currentUserId: autoVerified ? newUser.id : null,
-    users: [...state.users, newUser],
-  };
-
-  saveAuthState(newState);
-  return {
-    success: true,
-    message: autoVerified
-      ? "注册成功！（开发模式自动验证）"
-      : "注册成功，请查收验证邮件",
-    user: newUser,
-  };
+): Promise<AuthResult> {
+  const result = await apiRequest<AuthResult>("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, email, password }),
+  });
+  if (result.user) upsertSessionUser(result.user, result.success && result.user.verified);
+  return result;
 }
 
-// ========== 验证邮箱 ==========
+export async function loginUser(identifier: string, password: string): Promise<AuthResult> {
+  let result = await apiRequest<AuthResult>("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier, password }),
+  });
 
-export function verifyEmail(token: string): AuthResult {
-  const state = loadAuthState();
-  const user = state.users.find((u) => u.verificationToken === token);
-
-  if (!user) {
-    return { success: false, message: "验证链接无效或已过期" };
+  // One-time migration for accounts created by the previous browser-only version.
+  if (!result.success && result.message === "用户不存在") {
+    const legacy = loadAuthState().users.find(
+      (user) => (user.username === identifier || user.email === identifier) && user.password === password
+    );
+    if (legacy?.email) {
+      const migrated = await registerUserWithEmail(legacy.username, legacy.email, password);
+      if (migrated.success && migrated.user?.verified) result = migrated;
+      else if (migrated.success) return migrated;
+    }
   }
 
-  const updatedUser: User = {
-    ...user,
-    verified: true,
-    verificationToken: undefined,
-    lastLoginAt: new Date().toISOString(),
-    isFirstLogin: true,
-  };
-
-  const newState: AuthState = {
-    currentUserId: user.id,
-    users: state.users.map((u) => (u.id === user.id ? updatedUser : u)),
-  };
-  saveAuthState(newState);
-
-  return { success: true, message: "邮箱验证成功！", user: updatedUser };
+  if (result.user) upsertSessionUser(result.user, result.success);
+  return result;
 }
 
-// ========== 重发验证邮件 ==========
-
-export function resendVerification(email: string): AuthResult {
-  const state = loadAuthState();
-  const user = state.users.find((u) => u.email === email);
-
-  if (!user) return { success: false, message: "该邮箱未注册" };
-  if (user.verified) return { success: false, message: "该账号已验证，请直接登录" };
-
-  const newToken = generateId() + generateId();
-  const updatedUser = { ...user, verificationToken: newToken };
-  const newState: AuthState = {
-    ...state,
-    users: state.users.map((u) => (u.id === user.id ? updatedUser : u)),
-  };
-  saveAuthState(newState);
-
-  return { success: true, message: "验证邮件已重新发送", user: updatedUser };
+export async function verifyEmail(token: string): Promise<AuthResult> {
+  const result = await apiRequest<AuthResult>("/api/auth/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  if (result.success && result.user) upsertSessionUser(result.user, true);
+  return result;
 }
 
-// ========== 登录 ==========
-
-export function loginUser(identifier: string, password: string): AuthResult {
-  const state = loadAuthState();
-  const user = state.users.find(
-    (u) => u.username === identifier || u.email === identifier
-  );
-
-  if (!user) return { success: false, message: "用户不存在" };
-  if (user.password !== password) return { success: false, message: "密码错误" };
-  if (!user.verified) {
-    return {
-      success: false,
-      message: "请先验证邮箱",
-      user: user,
-    };
-  }
-
-  const updatedUser = { ...user, lastLoginAt: new Date().toISOString() };
-  const newState: AuthState = {
-    currentUserId: user.id,
-    users: state.users.map((u) => (u.id === user.id ? updatedUser : u)),
-  };
-  saveAuthState(newState);
-
-  return { success: true, message: "登录成功", user: updatedUser };
+export async function resendVerification(email: string): Promise<AuthResult> {
+  return apiRequest<AuthResult>("/api/auth/resend", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
 }
-
-// ========== 登出 ==========
 
 export function logoutUser(): void {
   const state = loadAuthState();
   saveAuthState({ ...state, currentUserId: null });
 }
 
-// ========== 获取当前用户 ==========
-
 export function getCurrentUser(): User | null {
   const state = loadAuthState();
   if (!state.currentUserId) return null;
-  return state.users.find((u) => u.id === state.currentUserId) || null;
+  return state.users.find((user) => user.id === state.currentUserId) || null;
 }
 
 export function isLoggedIn(): boolean {
@@ -203,26 +123,22 @@ export function isLoggedIn(): boolean {
 
 export function setCurrentUser(userId: string): void {
   const state = loadAuthState();
-  const user = state.users.find((u) => u.id === userId);
+  const user = state.users.find((item) => item.id === userId);
   if (!user) return;
-
-  const updatedUser = { ...user, lastLoginAt: new Date().toISOString() };
   saveAuthState({
     currentUserId: userId,
-    users: state.users.map((u) => (u.id === userId ? updatedUser : u)),
+    users: state.users.map((item) =>
+      item.id === userId ? { ...item, lastLoginAt: new Date().toISOString() } : item
+    ),
   });
 }
 
-// ========== 标记首次登录完成 ==========
-
 export function markFirstLoginDone(userId: string): void {
   const state = loadAuthState();
-  const user = state.users.find((u) => u.id === userId);
-  if (!user) return;
-
-  const updatedUser = { ...user, isFirstLogin: false };
   saveAuthState({
     ...state,
-    users: state.users.map((u) => (u.id === userId ? updatedUser : u)),
+    users: state.users.map((user) =>
+      user.id === userId ? { ...user, isFirstLogin: false } : user
+    ),
   });
 }
