@@ -7,7 +7,7 @@ import { useAppData } from "@/hooks/useAppData";
 import { getCurrentUser } from "@/lib/auth";
 import {
   Camera, Edit3, Flame, Timer, CheckCircle2, Trash2,
-  Trophy, MessageCircle, Zap, ChevronLeft,
+  Trophy, MessageCircle, Zap, ChevronLeft, Award,
 } from "lucide-react";
 
 interface TimelineItem {
@@ -23,7 +23,7 @@ const PIXEL_AVATARS = ["🐱", "🦊", "🐼", "🐰", "🦉", "🐸", "🐧", "
 
 export default function ProfilePage() {
   const { showToast } = useToast();
-  const { data, loaded } = useAppData();
+  const { data, loaded, currentUser } = useAppData();
   const [avatar, setAvatar] = useState("🐱");
   const [bgGradient, setBgGradient] = useState("linear-gradient(135deg, #FAD6A5, #FF6B35)");
   const [bio, setBio] = useState("别等了，开始吧 ⚡");
@@ -138,7 +138,7 @@ export default function ProfilePage() {
             <div className="flex-1 pb-2">
               <div className="flex items-center gap-2">
                 <h2 className="font-sketch text-2xl font-bold" style={{ color: "var(--color-ink)" }}>
-                  {data.profile.name || "探索者"}
+                  {data.profile.name || currentUser?.username || "用户"}
                 </h2>
                 <button
                   onClick={() => { setShowEdit(true); setEditBio(bio); setEditTags(tags.join(" ")); setEditCity(city); }}
@@ -169,6 +169,50 @@ export default function ProfilePage() {
           <StatBox icon={<CheckCircle2 className="w-4 h-4" />} label="累计完成" value={completedTasks} unit="个" color="var(--color-neon-green)" />
           <StatBox icon={<Timer className="w-4 h-4" />} label="累计专注" value={totalFocusMin} unit="分钟" color="var(--color-neon-orange)" />
           <StatBox icon={<Flame className="w-4 h-4" />} label="连续打卡" value={streak} unit="天" color="#FF6B35" />
+        </div>
+
+        {/* 我的成就 */}
+        <div className="mt-6">
+          <h3 className="font-hand text-sm font-bold mb-3 flex items-center gap-2" style={{ color: "var(--color-ink)" }}>
+            <Award className="w-4 h-4" /> 我的成就
+            <span className="text-xs font-normal ml-auto" style={{ color: "var(--text-muted)" }}>
+              {data.achievements.filter(a => a.unlocked).length} / {data.achievements.length} 已解锁
+            </span>
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
+            {data.achievements.map((ach) => (
+              <div
+                key={ach.id}
+                className="p-3 rounded-xl flex items-center gap-2 transition-all"
+                style={{
+                  background: "var(--bg-card)",
+                  border: `1px solid ${ach.unlocked ? "var(--color-neon-orange)" : "var(--card-border)"}`,
+                  opacity: ach.unlocked ? 1 : 0.6,
+                }}
+              >
+                <div className="text-2xl flex-shrink-0">
+                  {ach.unlocked ? ach.icon : "🔒"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold truncate" style={{ color: "var(--text-primary)" }}>
+                    {ach.title}
+                  </p>
+                  <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>
+                    {ach.description}
+                  </p>
+                  <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--divider)" }}>
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, (ach.progress / ach.maxProgress) * 100)}%`,
+                        background: ach.unlocked ? "var(--color-neon-green)" : "var(--color-neon-orange)",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* 动态时间线 */}

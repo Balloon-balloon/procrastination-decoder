@@ -43,7 +43,7 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  priority: "low" | "medium" | "high" | "urgent";
+  priority: "low" | "medium" | "high" | "urgent" | "auto";  // auto = 自动根据截止日期计算
   status: "todo" | "in-progress" | "completed" | "postponed";
   category: string;
   estimatedTime: number;
@@ -54,7 +54,11 @@ export interface Task {
   postponedCount: number;
   tags: string[];
   breakdownStatus: "none" | "loading" | "done" | "failed"; // AI拆解状态
+  attachments?: { name: string; type: string; content?: string }[]; // 上传的参考资料
   overallStrategy?: string;  // AI给出的整体策略建议
+  taskUnderstanding?: string; // AI对任务的理解
+  painPointResponse?: string; // AI对卡点的回应
+  executionPlan?: string;     // 执行节奏建议
 }
 
 export interface FocusSession {

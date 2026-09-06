@@ -9,8 +9,6 @@ import {
   ListTodo,
   Timer,
   BarChart3,
-  Sparkles,
-  Trophy,
   User,
   LogOut,
   PanelLeftClose,
@@ -19,6 +17,7 @@ import {
   Users,
   Handshake,
   Settings,
+  BookOpen,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/components/Toast";
@@ -32,8 +31,7 @@ const NAV_ITEMS = [
   { href: "/treehole", label: "树洞", icon: TreePine },
   { href: "/partner", label: "学伴", icon: Handshake },
   { href: "/diagnosis", label: "数据诊断", icon: BarChart3 },
-  { href: "/coach", label: "AI 教练", icon: Sparkles },
-  { href: "/achievements", label: "成就", icon: Trophy },
+  { href: "/guide", label: "新手指南", icon: BookOpen },
   { href: "/profile", label: "我的", icon: User },
   { href: "/settings", label: "设置", icon: Settings },
 ];

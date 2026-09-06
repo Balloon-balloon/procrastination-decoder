@@ -25,10 +25,15 @@ const SubTaskSchema = z.object({
 const BreakdownResponseSchema = z.object({
   subTasks: z.array(SubTaskSchema).min(3).max(8),
   overallStrategy: z.string(),
+  taskUnderstanding: z.string().optional(),
+  painPointResponse: z.string().optional(),
+  executionPlan: z.string().optional(),
 });
 
 const SYSTEM_PROMPT = `你是一个专业的拖延症任务拆解专家。你的核心方法论是：
 **拖延不是时间管理问题，是情绪管理问题。** 任务拆解的目的不是"更高效地完成任务"，而是"降低每个子任务的情绪阻力，让人愿意迈出第一步"。
+
+你输出的内容必须高度个性化，绝对不能使用模板化的套话。要真正读懂用户输入的任务细节，给出针对性的拆解。
 
 ## 阻力类型定义
 
@@ -41,36 +46,38 @@ const SYSTEM_PROMPT = `你是一个专业的拖延症任务拆解专家。你的
 
 ## 拆解原则
 
-1. **阻力优先排序**：不按逻辑顺序，按阻力从低到高排序。先做阻力最小的子任务，建立动量和信心。
-2. **第一子任务必须极低阻力**：第一个子任务的阻力分数必须≤3，让人"不可能失败"。比如"写毕业论文"的第一步不是"写引言"，而是"打开Word新建一个文档"。
-3. **每个子任务都有5分钟极小目标（microStep）**：哪怕这个子任务需要1小时，也设计一个5分钟能完成的启动动作。原理是：人一旦开始，就容易继续下去。
-4. **阻力评估要诚实**：不要为了"好看"而降低阻力分数。如果子任务真的很难，就给9-10分，并解释为什么难。
-5. **不同拖延人格的阻力分布不同**：完美主义者对"需要创意的"任务阻力高，对"机械操作"阻力低；焦虑者对"不确定结果"的任务阻力高；反抗者对"被要求的"任务阻力高。
-6. **区分任务类型**：
-   - 写作类（论文、作文、报告）：阻力来自完美主义和开头难，策略是"烂初稿+从中间开始写"
-   - 理科作业（数学、物理、化学）：阻力来自畏难和不知道从哪下手，策略是"先看题分类+从最简单的题开始+不会的先跳过"
-   - 编程类：阻力来自畏难和调试挫败，策略是"先跑起来+从最确定的功能开始"
-   - 学习/复习：阻力来自模糊和即时满足诱惑，策略是"具体化+番茄钟分段"
-   - 设计类：阻力来自完美主义和不确定好不好，策略是"先找参考定方向+低保真快速出原型"
+1. **真正理解任务**：在拆解之前，你必须先仔细阅读用户提供的所有信息——任务标题、描述、卡点、目标、参考资料摘要等。你的拆解必须反映出你真的理解了这个任务的具体内容，而不是套模板。
+2. **阻力优先排序**：不按逻辑顺序，按阻力从低到高排序。先做阻力最小的子任务，建立动量和信心。
+3. **第一子任务必须极低阻力**：第一个子任务的阻力分数必须≤3，让人"不可能失败"。比如"写毕业论文"的第一步不是"写引言"，而是"打开Word新建一个文档，输入论文标题"。
+4. **每个子任务都有详细说明**：description 不是一两句话的空话，要具体说明这一步要做什么、怎么做、为什么要先做这一步、做完会有什么产出。
+5. **每个子任务都有5分钟极小目标（microStep）**：哪怕这个子任务需要1小时，也设计一个5分钟能完成的启动动作。原理是：人一旦开始，就容易继续下去。microStep 必须极其具体，不能是"先做5分钟"这种废话。
+6. **阻力评估要诚实**：不要为了"好看"而降低阻力分数。如果子任务真的很难，就给9-10分，并解释为什么难。
+7. **引用用户的具体信息**：在描述和策略中，要提到用户提供的具体细节（比如用户提到的卡点、目标、时间限制等），让用户觉得"AI 真的看了我的内容"。
 
 ## 输出要求
 
-- 生成 4-6 个子任务
+- 生成 5-7 个子任务
 - 每个子任务**必须包含以下所有字段**，缺一不可：
-  - title: 子任务标题（字符串）
-  - description: 子任务详细描述（字符串，1-2句话）
+  - title: 子任务标题（字符串，要具体，包含任务主题）
+  - description: 子任务详细描述（字符串，3-5句话，具体说明做什么、怎么做、产出是什么）
   - resistanceScore: 阻力分数，1-10的整数（数字）
-  - resistanceType: 阻力类型，必须是以下之一：perfectionist / ambiguous / overwhelming / aversive / instant-gratification / low-resistance（字符串）
-  - resistanceReason: 为什么这个子任务有阻力，解释原因（字符串）
+  - resistanceType: 阻力类型（字符串）
+  - resistanceReason: 为什么这个子任务有阻力，结合任务内容具体解释（字符串）
   - estimatedMinutes: 预估耗时，单位分钟，至少5分钟（整数）
   - recommendedOrder: 推荐执行顺序，按阻力从低到高排列，从1开始（整数）
   - microStep: 5分钟极小目标，一个非常具体的5分钟就能完成的启动动作（字符串）
-- overallStrategy: 整体破解策略，一句话说明针对这个任务的思路（字符串）
+- overallStrategy: 整体破解策略（字符串，2-3句话，结合任务具体内容和用户卡点给出针对性策略）
+- taskUnderstanding: 一句话说明你对这个任务的理解（字符串，要让用户觉得你真的读懂了）
+- painPointResponse: 针对用户提到的困难/卡点的回应和建议（字符串，2-3句话）
+- executionPlan: 执行节奏建议（字符串，根据预估总时间给出建议，比如"建议分3天完成，每天1-2小时"）
 - 使用中文回答
 - **严格按照JSON格式输出**，不要有任何额外的解释文字、markdown标记或代码块包裹
 - 正确的JSON结构示例：
   {
     "overallStrategy": "...",
+    "taskUnderstanding": "...",
+    "painPointResponse": "...",
+    "executionPlan": "...",
     "subTasks": [
       {
         "title": "...",
@@ -86,13 +93,22 @@ const SYSTEM_PROMPT = `你是一个专业的拖延症任务拆解专家。你的
   }`;
 
 export async function POST(req: NextRequest) {
+  let taskTitle = "";
+  let taskDescription: string | undefined;
   try {
     const body = await req.json();
-    const { taskTitle, taskDescription, personalityType, personalityName } = body as {
+    taskTitle = body.taskTitle || "";
+    taskDescription = body.taskDescription;
+    const { personalityType, personalityName, painPoints, goal, fileSummary, dueDate, desiredSteps } = body as {
       taskTitle: string;
       taskDescription?: string;
       personalityType?: string;
       personalityName?: string;
+      painPoints?: string;
+      goal?: string;
+      fileSummary?: string;
+      dueDate?: string;
+      desiredSteps?: number;
     };
 
     if (!taskTitle?.trim()) {
@@ -135,8 +151,28 @@ export async function POST(req: NextRequest) {
       : "用户还没有完成人格测试，请基于一般情况评估。";
 
     const taskContext = taskDescription
-      ? `任务描述：${taskDescription}`
+      ? `任务详细描述：${taskDescription}`
       : "";
+
+    const painContext = painPoints
+      ? `用户提到的困难/卡点：${painPoints}`
+      : "";
+
+    const goalContext = goal
+      ? `用户的目标/期望：${goal}`
+      : "";
+
+    const fileContext = fileSummary
+      ? `用户上传的参考资料摘要：${fileSummary}`
+      : "";
+
+    const dueContext = dueDate
+      ? `截止日期：${dueDate}`
+      : "";
+
+    const stepsContext = desiredSteps
+      ? `用户希望拆成约 ${desiredSteps} 个步骤。`
+      : "请拆成 5-7 个步骤。";
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
@@ -150,18 +186,30 @@ export async function POST(req: NextRequest) {
           { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
-            content: `请拆解以下任务：
+            content: `请认真拆解以下任务。在拆解之前，请先仔细阅读所有信息，确保你的拆解是个性化的、针对性的。
 
-任务：${taskTitle}
+【任务】${taskTitle}
 ${taskContext}
+${painContext}
+${goalContext}
+${fileContext}
+${dueContext}
 
 ${userContext}
+${stepsContext}
+
+请务必：
+1. 先在 taskUnderstanding 中用一句话说明你理解了这个任务是什么
+2. 在 painPointResponse 中专门回应用户提到的卡点
+3. 在 executionPlan 中给出整体时间安排建议
+4. 子任务描述要详细，不能是空话
+5. microStep 要极其具体，是 5 分钟真的能做完的事
 
 请输出JSON格式的拆解结果。`,
           },
         ],
-        max_tokens: 1500,
-        temperature: 0.7,
+        max_tokens: 2500,
+        temperature: 0.8,
         response_format: { type: "json_object" },
       }),
     });
@@ -198,6 +246,15 @@ ${userContext}
       if (!parsed.overallStrategy) {
         parsed.overallStrategy = "从最简单的那一步开始，建立行动动量。";
       }
+      if (!parsed.taskUnderstanding) {
+        parsed.taskUnderstanding = `这是一个关于「${taskTitle}」的任务，需要认真规划和执行。`;
+      }
+      if (!parsed.painPointResponse) {
+        parsed.painPointResponse = "每个大任务看起来都吓人，但拆成小步骤后就没那么可怕了。关键是迈出第一步。";
+      }
+      if (!parsed.executionPlan) {
+        parsed.executionPlan = "建议按阻力从低到高逐步完成，每完成一步休息一下，保持节奏。";
+      }
 
       const validated = BreakdownResponseSchema.parse(parsed);
       return NextResponse.json(validated);
@@ -208,10 +265,7 @@ ${userContext}
     }
   } catch (error) {
     console.error("Breakdown route error:", error);
-    return NextResponse.json(
-      { error: "拆解失败，请稍后再试" },
-      { status: 500 }
-    );
+    return NextResponse.json(generateFallbackBreakdown(taskTitle || "任务", taskDescription));
   }
 }
 
@@ -221,6 +275,9 @@ function generateFallbackBreakdown(
   description?: string
 ): z.infer<typeof BreakdownResponseSchema> {
   const text = title + " " + (description || "");
+  const taskUnderstanding = `关于「${title}」的任务，${description ? "用户提到：" + description.slice(0, 50) : "需要拆解成可执行的小步骤"}。`;
+  const painPointResponse = "拖延的核心不是懒，是情绪阻力。把大任务拆小、从最简单的开始，一旦启动就容易继续下去。";
+  const executionPlan = "建议按阻力从低到高逐步完成，每完成1-2步休息一下。总耗时约2-3小时，可以分1-2天做。";
 
   // 注意：判断顺序很重要！更具体的类型放前面
   // 数学/理科作业（注意：要在"写作类"之前判断，因为"写作业"也含"写"字）

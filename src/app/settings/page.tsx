@@ -8,10 +8,11 @@ import { isMuted, setMuted } from "@/lib/sound";
 import {
   Palette, Volume2, Timer, Bell, User, HelpCircle,
   Camera, Sun, Moon, ChevronRight, Trash2, LogOut, Edit3,
-  RotateCcw, Send, Info,
+  Send, Info, BookOpen,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { logout } from "@/lib/auth";
+import { logoutUser } from "@/lib/auth";
+import Link from "next/link";
 
 const THEMMES = [
   { name: "暖杏", color: "#FAD6A5", ink: "#2B3A67" },
@@ -90,7 +91,7 @@ export default function SettingsPage() {
   };
 
   const handleLogout = () => {
-    logout();
+    logoutUser();
     showToast("已退出登录", "info");
     setTimeout(() => router.push("/login"), 500);
   };
@@ -259,7 +260,9 @@ export default function SettingsPage() {
 
         {/* 帮助与反馈 */}
         <SectionCard icon={<HelpCircle className="w-4 h-4" />} title="帮助与反馈">
-          <ActionRow icon={<RotateCcw className="w-4 h-4" />} label="新手指南" onClick={() => { localStorage.removeItem("pd-onboarding-done"); showToast("下次进入将显示新手引导", "info"); }} />
+          <Link href="/guide" className="block">
+            <ActionRow icon={<BookOpen className="w-4 h-4" />} label="使用指南" onClick={() => {}} />
+          </Link>
           <ActionRow icon={<Send className="w-4 h-4" />} label="意见反馈" onClick={() => setShowFeedback(true)} />
           <ActionRow icon={<Info className="w-4 h-4" />} label="关于 WhyWait" onClick={() => showToast("WhyWait v1.0 · 别等了，开始吧 ⚡", "info")} />
         </SectionCard>

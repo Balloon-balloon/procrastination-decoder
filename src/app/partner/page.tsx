@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageTransition, StaggerContainer, FadeInItem } from "@/components/Animations";
-import { UserX, UserCheck, HandBell, CheckCircle2, ChevronRight, Zap, Target, Clock } from "lucide-react";
+import { UserX, UserCheck, Bell, CheckCircle2, ChevronRight, Zap, Target, Clock } from "lucide-react";
 import { playClickSound, playCompleteSound } from "@/lib/sound";
 import { useToast } from "@/components/Toast";
 import { useAppData } from "@/hooks/useAppData";
@@ -60,11 +60,11 @@ export default function PartnerPage() {
 
   const handleMatch = () => {
     if (paused) {
-      showToast("今日已暂停匹配", "warn");
+      showToast("今日已暂停匹配", "warning");
       return;
     }
     if (myTags.length === 0) {
-      showToast("请先选择偏好标签", "warn");
+      showToast("请先选择偏好标签", "warning");
       return;
     }
 
@@ -340,7 +340,7 @@ export default function PartnerPage() {
               onClick={handleHighFive}
               className="btn-mint w-full text-sm font-hand flex items-center justify-center gap-2"
             >
-              <HandBell className="w-4 h-4" />
+              <Bell className="w-4 h-4" />
               击掌加油 {highFives > 0 && `(${highFives})`}
             </button>
 

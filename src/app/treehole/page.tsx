@@ -104,11 +104,11 @@ export default function TreeHolePage() {
 
   const handlePost = () => {
     if (!composeContent.trim()) {
-      showToast("写点什么再发吧", "warn");
+      showToast("写点什么再发吧", "warning");
       return;
     }
     if (todayPostCount >= 3) {
-      showToast("今天已发3帖，明天再来吧", "warn");
+      showToast("今天已发3帖，明天再来吧", "warning");
       return;
     }
 

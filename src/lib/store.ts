@@ -106,9 +106,9 @@ export const DEFAULT_ACHIEVEMENTS: Achievement[] = [
   },
 ];
 
-export function getDefaultProfile(): UserProfile {
+export function getDefaultProfile(name?: string): UserProfile {
   return {
-    name: "探索者",
+    name: name || "",
     personalityResult: null,
     createdAt: new Date().toISOString(),
     totalFocusTime: 0,
@@ -325,7 +325,12 @@ export function setTaskBreakdownStatus(
   data: AppData,
   taskId: string,
   status: Task["breakdownStatus"],
-  overallStrategy?: string
+  overallStrategy?: string,
+  extras?: {
+    taskUnderstanding?: string;
+    painPointResponse?: string;
+    executionPlan?: string;
+  }
 ): AppData {
   const tasks = data.tasks.map((t) =>
     t.id === taskId
@@ -333,6 +338,7 @@ export function setTaskBreakdownStatus(
           ...t,
           breakdownStatus: status,
           ...(overallStrategy !== undefined ? { overallStrategy } : {}),
+          ...(extras || {}),
         }
       : t
   );

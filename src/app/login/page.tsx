@@ -19,9 +19,11 @@ import {
   Send,
   AlertCircle,
   CheckCircle2,
+  BookOpen,
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { playClickSound, playErrorSound } from "@/lib/sound";
+import Link from "next/link";
 
 function LoginContent() {
   const router = useRouter();
@@ -378,9 +380,16 @@ function LoginContent() {
               </p>
 
               <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--divider)" }}>
-                <p className="text-[10px] font-hand text-center" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[10px] font-hand text-center mb-2" style={{ color: "var(--text-muted)" }}>
                   💡 注册后需验证邮箱才能登录 · 每个账号数据独立存储
                 </p>
+                <Link
+                  href="/guide"
+                  className="flex items-center justify-center gap-1.5 text-xs font-hand transition-colors hover:underline"
+                  style={{ color: "var(--color-neon-orange)" }}
+                >
+                  <BookOpen className="w-3.5 h-3.5" /> 新手指南：了解如何使用 whywait
+                </Link>
               </div>
             </div>
           )}
