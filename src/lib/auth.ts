@@ -3,6 +3,7 @@ import { apiRequest } from "./api";
 
 const AUTH_STORAGE_KEY = "procrastination-decoder-auth";
 const USER_DATA_PREFIX = "procrastination-decoder-user-";
+const TAB_USER_KEY = "procrastination-decoder-current-user";
 
 export function loadAuthState(): AuthState {
   if (typeof window === "undefined") return { currentUserId: null, users: [] };
@@ -49,6 +50,9 @@ function upsertSessionUser(user: User, makeCurrent: boolean): void {
     ? state.users.map((item) => (item.id === user.id ? safeUser : item))
     : [...state.users.filter((item) => item.email !== user.email), safeUser];
   saveAuthState({ currentUserId: makeCurrent ? user.id : state.currentUserId, users });
+  if (makeCurrent && typeof window !== "undefined") {
+    sessionStorage.setItem(TAB_USER_KEY, user.id);
+  }
 }
 
 export async function registerUserWithEmail(
@@ -108,13 +112,19 @@ export async function resendVerification(email: string): Promise<AuthResult> {
 
 export function logoutUser(): void {
   const state = loadAuthState();
+  sessionStorage.removeItem(TAB_USER_KEY);
   saveAuthState({ ...state, currentUserId: null });
 }
 
 export function getCurrentUser(): User | null {
+  if (typeof window === "undefined") return null;
   const state = loadAuthState();
-  if (!state.currentUserId) return null;
-  return state.users.find((user) => user.id === state.currentUserId) || null;
+  const tabUserId = sessionStorage.getItem(TAB_USER_KEY);
+  const userId = tabUserId || state.currentUserId;
+  if (!userId) return null;
+  const user = state.users.find((item) => item.id === userId) || null;
+  if (user && !tabUserId) sessionStorage.setItem(TAB_USER_KEY, user.id);
+  return user;
 }
 
 export function isLoggedIn(): boolean {
@@ -125,6 +135,7 @@ export function setCurrentUser(userId: string): void {
   const state = loadAuthState();
   const user = state.users.find((item) => item.id === userId);
   if (!user) return;
+  sessionStorage.setItem(TAB_USER_KEY, userId);
   saveAuthState({
     currentUserId: userId,
     users: state.users.map((item) =>

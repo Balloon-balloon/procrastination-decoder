@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Brain, ListTodo, Timer, BarChart3, ChevronRight, Sparkles } from "lucide-react";
-import { markFirstLoginDone } from "@/lib/auth";
+import { getCurrentUser, markFirstLoginDone } from "@/lib/auth";
 
 const STEPS = [
   {
@@ -49,10 +49,7 @@ export function OnboardingGuide() {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   useEffect(() => {
     const checkReady = () => {
-      const user = localStorage.getItem("procrastination-decoder-auth");
-      if (!user) return;
-      const parsed = JSON.parse(user);
-      const currentUser = parsed.users?.find((u: any) => u.id === parsed.currentUserId);
+      const currentUser = getCurrentUser();
       if (currentUser?.isFirstLogin && !localStorage.getItem(`pd-onboarding-done-${currentUser.id}`)) {
         setTimeout(() => setShow(true), 1000);
       }
@@ -92,6 +89,8 @@ export function OnboardingGuide() {
 
   const handleNext = () => {
     if (stepIndex < STEPS.length - 1) {
+      // 先隐藏当前提示，等下一目标完成测量后再整体显示，避免位置闪烁。
+      setTargetRect(null);
       setStepIndex(stepIndex + 1);
     } else {
       handleFinish();
@@ -99,13 +98,10 @@ export function OnboardingGuide() {
   };
 
   const handleFinish = () => {
-    const raw = localStorage.getItem("procrastination-decoder-auth");
-    if (raw) {
-      const state = JSON.parse(raw);
-      if (state.currentUserId) {
-        localStorage.setItem(`pd-onboarding-done-${state.currentUserId}`, "true");
-        markFirstLoginDone(state.currentUserId);
-      }
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      localStorage.setItem(`pd-onboarding-done-${currentUser.id}`, "true");
+      markFirstLoginDone(currentUser.id);
     }
     setShow(false);
   };
@@ -117,7 +113,7 @@ export function OnboardingGuide() {
 
   // 计算气泡位置
   const getBubbleStyle = (): React.CSSProperties => {
-    if (!targetRect) return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+    if (!targetRect) return { visibility: "hidden" };
     const rect = targetRect;
     const bubbleWidth = 300;
     const bubbleHeight = 180;
@@ -133,7 +129,7 @@ export function OnboardingGuide() {
 
   return (
     <AnimatePresence>
-      {show && (
+      {show && targetRect && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

@@ -9,7 +9,8 @@ import {
 
 export const runtime = "nodejs";
 
-const ONLINE_WINDOW_MS = 2 * 60 * 1000;
+// 前端等待 60 秒，额外保留 30 秒处理后台标签页计时节流和网络延迟。
+const ONLINE_WINDOW_MS = 90 * 1000;
 const EMOJIS = ["🦊", "🐼", "🦉", "🐰", "🐯", "🐧", "🐨", "🦁"];
 
 export async function POST(req: NextRequest) {
@@ -51,7 +52,12 @@ export async function POST(req: NextRequest) {
         database.partnerMatches.filter((item) => item.dateKey === getDateKey()).flatMap((item) => item.userIds)
       );
       const candidates = database.matchProfiles
-        .filter((item) => item.userId !== userId && !matchedIds.has(item.userId) && new Date(item.availableUntil).getTime() > Date.now())
+        .filter((item) =>
+          item.userId !== userId &&
+          !matchedIds.has(item.userId) &&
+          new Date(item.availableUntil).getTime() > Date.now() &&
+          new Date(item.updatedAt).getTime() > Date.now() - ONLINE_WINDOW_MS
+        )
         .map((item) => ({
           profile: item,
           score: item.tags.filter((tag) => tags.includes(tag)).length * 10 + (item.activeTime === profile.activeTime ? 2 : 0),
@@ -112,7 +118,22 @@ export async function PUT(req: NextRequest) {
       if (!match) return { status: "error", success: false, message: "今日真人匹配已失效" };
       const targetId = match.userIds.find((id) => id !== userId);
       const sender = database.users.find((item) => item.id === userId);
-      if (!targetId || !sender || action !== "high-five") return { status: "error", success: false, message: "互动参数无效" };
+      if (!targetId || !sender) return { status: "error", success: false, message: "匹配信息无效" };
+
+      if (action === "disconnect") {
+        database.partnerMatches = database.partnerMatches.filter((item) => item.id !== match.id);
+        database.matchProfiles = database.matchProfiles.filter((profile) => !match.userIds.includes(profile.userId));
+        database.partnerNotifications.push({
+          id: createId(),
+          userId: targetId,
+          fromUserId: userId,
+          message: `${sender.username} 已取消学伴连接`,
+          createdAt: new Date().toISOString(),
+        });
+        return { status: "disconnected", success: true };
+      }
+
+      if (action !== "high-five") return { status: "error", success: false, message: "互动参数无效" };
       database.partnerNotifications.push({
         id: createId(),
         userId: targetId,
