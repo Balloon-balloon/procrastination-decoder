@@ -21,6 +21,11 @@ export default function RootLayout({
         <ToastProvider>
           <AppShell>{children}</AppShell>
         </ToastProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var f=localStorage.getItem("pd-font-size");if(f){document.documentElement.style.fontSize=f;document.documentElement.style.setProperty("--font-size-base",f);}}catch(e){}`,
+          }}
+        />
       </body>
     </html>
   );

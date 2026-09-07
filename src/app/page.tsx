@@ -17,6 +17,9 @@ import {
   Play,
   Rocket,
   Clock,
+  Users,
+  MessageCircle,
+  Cat,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -435,8 +438,8 @@ export default function DashboardPage() {
           {[
             { href: "/tasks", icon: <ListTodo className="w-6 h-6" />, title: "任务管理", desc: "创建、追踪、分析你的任务完成模式", color: 3 },
             { href: "/focus", icon: <Zap className="w-6 h-6" />, title: "专注模式", desc: "番茄钟 + 深度工作，告别拖延", color: 0 },
-            { href: "/diagnosis", icon: <TrendingUp className="w-6 h-6" />, title: "数据诊断", desc: "可视化你的拖延模式与趋势", color: 2 },
-            { href: "/coach", icon: <Sparkles className="w-6 h-6" />, title: "AI 教练", desc: "个性化建议，破解你的拖延循环", color: 1 },
+            { href: "/decode", icon: <Sparkles className="w-6 h-6" />, title: "灵感拆解", desc: "AI 驱动，把大任务拆成可执行小步骤", color: 1 },
+            { href: "/community", icon: <Users className="w-6 h-6" />, title: "陪伴社区", desc: "自习室、树洞、学伴，一起告别拖延", color: 2 },
           ].map((card, i) => (
             <FadeInItem key={i}>
               <Link href={card.href} className="block">
@@ -464,6 +467,41 @@ export default function DashboardPage() {
                     </div>
                     <ChevronRight className="w-5 h-5" style={{ color: "var(--color-ink)" }} />
                   </div>
+                </div>
+              </Link>
+            </FadeInItem>
+          ))}
+        </StaggerContainer>
+
+        {/* 陪伴社区入口 - 三卡片 */}
+        <StaggerContainer className="grid grid-cols-3 gap-3" delay={0.5}>
+          {[
+            { href: "/studyroom", icon: <Users className="w-5 h-5" />, title: "自习室", desc: "一起专注", color: 3 },
+            { href: "/treehole", icon: <MessageCircle className="w-5 h-5" />, title: "树洞", desc: "匿名倾诉", color: 0 },
+            { href: "/partner", icon: <Cat className="w-5 h-5" />, title: "学伴", desc: "互相监督", color: 1 },
+          ].map((card, i) => (
+
+            <FadeInItem key={i}>
+              <Link href={card.href} className="block">
+                <div
+                  className="sticky-note p-4 cursor-pointer text-center"
+                  style={{
+                    background: STICKY_COLORS[card.color].bg,
+                    transform: `rotate(${STICKY_COLORS[card.color].rotate})`,
+                  }}
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
+                    style={{ background: "rgba(43,58,103,0.08)" }}
+                  >
+                    <span style={{ color: "var(--color-ink)" }}>{card.icon}</span>
+                  </div>
+                  <h3 className="text-sm font-bold" style={{ color: "var(--color-ink)" }}>
+                    {card.title}
+                  </h3>
+                  <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>
+                    {card.desc}
+                  </p>
                 </div>
               </Link>
             </FadeInItem>

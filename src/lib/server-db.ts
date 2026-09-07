@@ -14,6 +14,7 @@ export interface StoredUser {
   passwordSalt: string;
   verified: boolean;
   verificationToken?: string;
+  verificationCode?: string;
   verificationExpiresAt?: string;
   createdAt: string;
   lastLoginAt: string;

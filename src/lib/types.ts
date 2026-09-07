@@ -122,6 +122,7 @@ export interface User {
   password?: string;
   verified: boolean;
   verificationToken?: string;
+  verificationCode?: string;
   createdAt: string;
   lastLoginAt: string;
   isFirstLogin?: boolean;

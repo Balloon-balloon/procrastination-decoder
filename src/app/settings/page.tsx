@@ -64,7 +64,11 @@ export default function SettingsPage() {
     const savedTheme = localStorage.getItem("pd-theme");
     if (savedTheme) setTheme(parseInt(savedTheme));
     const savedFont = localStorage.getItem("pd-font-size");
-    if (savedFont) setFontSize(savedFont);
+    if (savedFont) {
+      setFontSize(savedFont);
+      document.documentElement.style.setProperty("--font-size-base", savedFont);
+      document.documentElement.style.fontSize = savedFont;
+    }
   }, []);
 
   const updateTimerSettings = (key: string, value: any) => {
@@ -86,7 +90,8 @@ export default function SettingsPage() {
   const handleFontSize = (size: string) => {
     setFontSize(size);
     localStorage.setItem("pd-font-size", size);
-    document.body.style.fontSize = size;
+    document.documentElement.style.setProperty("--font-size-base", size);
+    document.documentElement.style.fontSize = size;
     showToast("字体大小已更新", "success");
   };
 

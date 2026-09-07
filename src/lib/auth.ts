@@ -41,6 +41,7 @@ export interface AuthResult {
   message: string;
   user?: User;
   requiresVerification?: boolean;
+  verificationCode?: string;
 }
 
 function upsertSessionUser(user: User, makeCurrent: boolean): void {
@@ -58,12 +59,14 @@ function upsertSessionUser(user: User, makeCurrent: boolean): void {
 export async function registerUserWithEmail(
   username: string,
   email: string,
-  password: string
+  password: string,
+  captchaAnswer?: number,
+  captchaExpected?: number,
 ): Promise<AuthResult> {
   const result = await apiRequest<AuthResult>("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, email, password }),
+    body: JSON.stringify({ username, email, password, captchaAnswer, captchaExpected }),
   });
   if (result.user) upsertSessionUser(result.user, result.success && result.user.verified);
   return result;
@@ -97,6 +100,16 @@ export async function verifyEmail(token: string): Promise<AuthResult> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
+  });
+  if (result.success && result.user) upsertSessionUser(result.user, true);
+  return result;
+}
+
+export async function verifyEmailByCode(email: string, code: string): Promise<AuthResult> {
+  const result = await apiRequest<AuthResult>("/api/auth/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
   });
   if (result.success && result.user) upsertSessionUser(result.user, true);
   return result;
