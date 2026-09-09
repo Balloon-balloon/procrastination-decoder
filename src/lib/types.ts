@@ -121,8 +121,6 @@ export interface User {
   email: string;
   password?: string;
   verified: boolean;
-  verificationToken?: string;
-  verificationCode?: string;
   createdAt: string;
   lastLoginAt: string;
   isFirstLogin?: boolean;

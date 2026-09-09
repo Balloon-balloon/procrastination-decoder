@@ -15,8 +15,16 @@ export async function POST(req: NextRequest) {
       if (!user) return { status: 404, message: "用户不存在" } as const;
       if (!verifyPassword(password, user.passwordSalt, user.passwordHash)) return { status: 401, message: "密码错误" } as const;
       if (!user.verified) return { status: 403, message: "请先验证邮箱", user: toPublicUser(user) } as const;
+      const isFirstLogin = user.hasLoggedIn === undefined
+        ? user.createdAt === user.lastLoginAt
+        : !user.hasLoggedIn;
+      user.hasLoggedIn = true;
       user.lastLoginAt = new Date().toISOString();
-      return { status: 200, message: "登录成功", user: toPublicUser(user) } as const;
+      return {
+        status: 200,
+        message: "登录成功",
+        user: { ...toPublicUser(user), isFirstLogin },
+      } as const;
     });
     return NextResponse.json({ success: result.status === 200, message: result.message, user: result.user }, { status: result.status });
   } catch (error) {

@@ -16,6 +16,7 @@ export interface StoredUser {
   verificationToken?: string;
   verificationCode?: string;
   verificationExpiresAt?: string;
+  hasLoggedIn?: boolean;
   createdAt: string;
   lastLoginAt: string;
 }
@@ -148,6 +149,8 @@ export function toPublicUser(user: StoredUser) {
     verified: user.verified,
     createdAt: user.createdAt,
     lastLoginAt: user.lastLoginAt,
-    isFirstLogin: user.createdAt === user.lastLoginAt,
+    isFirstLogin:
+      user.hasLoggedIn === false ||
+      (user.hasLoggedIn === undefined && user.createdAt === user.lastLoginAt),
   };
 }
