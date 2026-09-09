@@ -9,8 +9,6 @@ import {
   ListTodo,
   Timer,
   BarChart3,
-  Sparkles,
-  Trophy,
   User,
   LogOut,
   PanelLeftClose,
@@ -19,24 +17,41 @@ import {
   Users,
   Handshake,
   Settings,
+  BookOpen,
+  MessageCircle,
+  Cat,
+  Sparkles,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/components/Toast";
 
-const NAV_ITEMS = [
-  { href: "/", label: "仪表盘", icon: LayoutDashboard },
-  { href: "/test", label: "人格测试", icon: Brain },
-  { href: "/tasks", label: "任务管理", icon: ListTodo },
-  { href: "/focus", label: "专注模式", icon: Timer },
-  { href: "/studyroom", label: "自习室", icon: Users },
-  { href: "/treehole", label: "树洞", icon: TreePine },
-  { href: "/partner", label: "学伴", icon: Handshake },
-  { href: "/diagnosis", label: "数据诊断", icon: BarChart3 },
-  { href: "/coach", label: "AI 教练", icon: Sparkles },
-  { href: "/achievements", label: "成就", icon: Trophy },
-  { href: "/profile", label: "我的", icon: User },
-  { href: "/settings", label: "设置", icon: Settings },
+const NAV_SECTIONS = [
+  {
+    title: "",
+    items: [
+      { href: "/", label: "仪表盘", icon: LayoutDashboard },
+      { href: "/test", label: "人格测试", icon: Brain },
+      { href: "/tasks", label: "任务管理", icon: ListTodo },
+      { href: "/focus", label: "专注模式", icon: Timer },
+    ],
+  },
+  {
+    title: "",
+    items: [
+      { href: "/decode", label: "灵感拆解", icon: Sparkles },
+      { href: "/community", label: "陪伴社区", icon: Users },
+    ],
+  },
+  {
+    title: "",
+    items: [
+      { href: "/profile", label: "我的", icon: User },
+      { href: "/settings", label: "设置", icon: Settings },
+    ],
+  },
 ];
+
+const NAV_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
 
 export function Navigation({
   collapsed = false,
@@ -131,77 +146,91 @@ export function Navigation({
 
             {/* 导航项 */}
             <div className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-              {NAV_ITEMS.map((item, index) => {
-                const Icon = item.icon;
-                const isActive =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(item.href);
-                return (
-                  <motion.div
-                    key={item.href}
-                    initial={{ opacity: 0, x: -15 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.05 + index * 0.04, duration: 0.3 }}
-                  >
-                    <Link
-                      href={item.href}
-                      data-guide={
-                        item.href === "/" ? "dashboard" :
-                        item.href === "/test" ? "test" :
-                        item.href === "/tasks" ? "tasks" :
-                        item.href === "/focus" ? "focus" :
-                        item.href === "/diagnosis" ? "diagnosis" :
-                        item.href === "/coach" ? "coach" :
-                        item.href === "/achievements" ? "achievements" : undefined
-                      }
-                      className={cn(
-                        "relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group overflow-hidden",
-                      )}
-                      style={
-                        isActive
-                          ? {
-                              background: "var(--color-apricot)",
-                              color: "var(--color-ink)",
-                              fontWeight: 700,
-                            }
-                          : {
-                              color: "var(--text-secondary)",
-                            }
-                      }
+              {NAV_SECTIONS.map((section, sIdx) => (
+                <div key={sIdx}>
+                  {section.title && (
+                    <p
+                      className="text-[10px] font-bold uppercase tracking-wider px-4 mt-3 mb-1"
+                      style={{ color: "var(--text-muted)" }}
                     >
-                      {isActive && (
-                        <motion.div
-                          layoutId="nav-active-bg"
-                          className="absolute inset-0 rounded-lg"
-                          style={{
-                            background: "var(--color-apricot)",
-                            borderLeft: "3px solid var(--color-neon-orange)",
-                          }}
-                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        />
-                      )}
+                      {section.title}
+                    </p>
+                  )}
+                  {section.items.map((item, index) => {
+                    const Icon = item.icon;
+                    const isActive =
+                      item.href === "/"
+                        ? pathname === "/"
+                        : pathname.startsWith(item.href);
+                    return (
                       <motion.div
-                        whileHover={{ x: 3 }}
-                        className="relative flex items-center gap-3 w-full z-10"
+                        key={item.href}
+                        initial={{ opacity: 0, x: -15 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.05 + (sIdx * 4 + index) * 0.04, duration: 0.3 }}
                       >
-                        <Icon
+                        <Link
+                          href={item.href}
+                          data-guide={
+                            item.href === "/" ? "dashboard" :
+                            item.href === "/test" ? "test" :
+                            item.href === "/tasks" ? "tasks" :
+                            item.href === "/focus" ? "focus" :
+                            item.href === "/decode" ? "decode" :
+                            item.href === "/studyroom" ? "studyroom" :
+                            item.href === "/treehole" ? "treehole" :
+                            item.href === "/partner" ? "partner" :
+                            item.href === "/achievements" ? "achievements" : undefined
+                          }
                           className={cn(
-                            "w-[18px] h-[18px] transition-all duration-200",
-                            isActive ? "text-neon-orange" : "group-hover:scale-110"
+                            "relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group overflow-hidden",
                           )}
                           style={
                             isActive
-                              ? { color: "var(--color-neon-orange)" }
-                              : undefined
+                              ? {
+                                  background: "var(--color-apricot)",
+                                  color: "var(--color-ink)",
+                                  fontWeight: 700,
+                                }
+                              : {
+                                  color: "var(--text-secondary)",
+                                }
                           }
-                        />
-                        <span className="text-sm font-medium">{item.label}</span>
+                        >
+                          {isActive && (
+                            <motion.div
+                              layoutId="nav-active-bg"
+                              className="absolute inset-0 rounded-lg"
+                              style={{
+                                background: "var(--color-apricot)",
+                                borderLeft: "3px solid var(--color-neon-orange)",
+                              }}
+                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            />
+                          )}
+                          <motion.div
+                            whileHover={{ x: 3 }}
+                            className="relative flex items-center gap-3 w-full z-10"
+                          >
+                            <Icon
+                              className={cn(
+                                "w-[18px] h-[18px] transition-all duration-200",
+                                isActive ? "text-neon-orange" : "group-hover:scale-110"
+                              )}
+                              style={
+                                isActive
+                                  ? { color: "var(--color-neon-orange)" }
+                                  : undefined
+                              }
+                            />
+                            <span className="text-sm font-medium">{item.label}</span>
+                          </motion.div>
+                        </Link>
                       </motion.div>
-                    </Link>
-                  </motion.div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              ))}
             </div>
 
             {/* 底部用户区 */}

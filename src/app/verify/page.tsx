@@ -21,16 +21,22 @@ function VerifyContent() {
       return;
     }
 
-    const result = verifyEmail(token);
-    if (result.success && result.user) {
-      setStatus("success");
-      setMessage("邮箱验证成功！正在为你登录...");
-      switchToUser(result.user);
-      setTimeout(() => router.push("/"), 2000);
-    } else {
-      setStatus("error");
-      setMessage(result.message);
-    }
+    let active = true;
+    const runVerification = async () => {
+      const result = await verifyEmail(token);
+      if (!active) return;
+      if (result.success && result.user) {
+        setStatus("success");
+        setMessage("邮箱验证成功！正在为你登录...");
+        switchToUser(result.user);
+        setTimeout(() => router.push("/"), 2000);
+      } else {
+        setStatus("error");
+        setMessage(result.message);
+      }
+    };
+    void runVerification();
+    return () => { active = false; };
   }, [token, router, switchToUser]);
 
   return (

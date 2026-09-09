@@ -1,10 +1,12 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppData } from "@/hooks/useAppData";
-import { addFocusSession, completeSubTask, getSubTaskById } from "@/lib/store";
+import { formatEstimatedTime } from "@/lib/time";
+import { useToast } from "@/components/Toast";
+import { addFocusSession, completeSubTask, getSubTaskById, updateTask } from "@/lib/store";
 import { formatTime } from "@/lib/utils";
-import { SubTask } from "@/lib/types";
+import { SubTask, Task } from "@/lib/types";
 import { PageTransition } from "@/components/Animations";
 import { useTimer } from "@/hooks/useTimer";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +21,9 @@ import {
   Check,
   Zap,
   ArrowLeft,
+  ChevronDown,
+  Link2,
+  Unlink,
 } from "lucide-react";
 
 const MODES = {
@@ -54,11 +59,13 @@ const RESISTANCE_LABELS: Record<string, { label: string; emoji: string; color: s
   "low-resistance": { label: "低阻力", emoji: "✅", color: "text-green-400" },
 };
 
-export default function FocusPage() {
+function FocusPageContent() {
   const { data, update, loaded } = useAppData();
+  const { showToast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
   const subTaskId = searchParams.get("subTaskId");
+  const taskIdParam = searchParams.get("taskId");
   const timer = useTimer();
 
   const [mode, setMode] = useState<keyof typeof MODES>("pomodoro");
@@ -68,14 +75,27 @@ export default function FocusPage() {
   const [sessionCompleted, setSessionCompleted] = useState(false);
   const [subTaskCompleted, setSubTaskCompleted] = useState(false);
   const [showReturnMessage, setShowReturnMessage] = useState(false);
+  const [showTaskPicker, setShowTaskPicker] = useState(false);
+  const [boundTaskId, setBoundTaskId] = useState<string | null>(taskIdParam || null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const leaveTimestampRef = useRef<number | null>(null);
   const lastTimeLeftRef = useRef<number>(MODES.pomodoro.duration);
+  const elapsedSecondsRef = useRef<number>(0);
 
   // 查找当前子任务
   const currentSubTask: SubTask | null = subTaskId
     ? getSubTaskById(data, subTaskId) || null
     : null;
+
+  // 查找绑定的任务
+  const boundTask: Task | null = boundTaskId
+    ? data.tasks.find((t) => t.id === boundTaskId) || null
+    : null;
+
+  // 可绑定的任务列表（未完成的任务）
+  const bindableTasks = data.tasks.filter(
+    (t) => t.status !== "completed"
+  );
 
   const modeConfig = MODES[mode];
   const progress = ((modeConfig.duration - timeLeft) / modeConfig.duration) * 100;
@@ -109,21 +129,30 @@ export default function FocusPage() {
             setSessionCompleted(true);
             // 完成时记录会话
             if (sessionStarted) {
-              update((prev) => {
-                return addFocusSession(prev, {
-                  taskId: currentSubTask?.taskId || null,
+              const elapsedSec = elapsedSecondsRef.current + 1;
+              update((prevData) => {
+                const newData = addFocusSession(prevData, {
+                  taskId: currentSubTask?.taskId || boundTaskId || null,
                   subTaskId: currentSubTask?.id || null,
-                  taskTitle: currentSubTask?.title || modeConfig.label,
-                  duration: modeConfig.duration,
+                  taskTitle: currentSubTask?.title || boundTask?.title || modeConfig.label,
+                  duration: Math.floor(elapsedSec / 60),
                   mode,
                   completed: true,
                   startedAt: new Date().toISOString(),
                   endedAt: new Date().toISOString(),
                 });
+                // 如果绑定了任务，更新任务的实际投入时间
+                if (boundTaskId) {
+                  return updateTask(newData, boundTaskId, {
+                    actualTime: (boundTask?.actualTime || 0) + Math.floor(elapsedSec / 60),
+                  });
+                }
+                return newData;
               });
             }
             return 0;
           }
+          elapsedSecondsRef.current += 1;
           return prev - 1;
         });
       }, 1000);
@@ -137,7 +166,7 @@ export default function FocusPage() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, mode, modeConfig.duration, sessionStarted, update, currentSubTask]);
+  }, [isRunning, mode, modeConfig.duration, sessionStarted, update, currentSubTask, boundTaskId, boundTask]);
 
   // 记录最后剩余时间
   useEffect(() => {
@@ -171,8 +200,8 @@ export default function FocusPage() {
               setShowReturnMessage(true);
               setTimeout(() => setShowReturnMessage(false), 3000);
             } else {
-              timer.setShowReturnDialog(true);
-              timer.setLeaveDuration(leaveSec);
+              setShowReturnMessage(true);
+              setTimeout(() => setShowReturnMessage(false), 3000);
             }
           } else {
             setShowReturnMessage(true);
@@ -188,25 +217,110 @@ export default function FocusPage() {
   }, [isRunning, timeLeft, timer]);
 
   const handleModeChange = (newMode: keyof typeof MODES) => {
+    // 如果正在运行，先记录已用时间
+    if (sessionStarted && isRunning && elapsedSecondsRef.current > 0) {
+      const elapsedMin = Math.max(1, Math.floor(elapsedSecondsRef.current / 60));
+      update((prevData) => {
+        const newData = addFocusSession(prevData, {
+          taskId: currentSubTask?.taskId || boundTaskId || null,
+          subTaskId: currentSubTask?.id || null,
+          taskTitle: currentSubTask?.title || boundTask?.title || modeConfig.label,
+          duration: elapsedMin,
+          mode,
+          completed: false,
+          startedAt: new Date().toISOString(),
+          endedAt: new Date().toISOString(),
+        });
+        if (boundTaskId) {
+          return updateTask(newData, boundTaskId, {
+            actualTime: (boundTask?.actualTime || 0) + elapsedMin,
+          });
+        }
+        return newData;
+      });
+    }
     setMode(newMode);
     setTimeLeft(MODES[newMode].duration);
     setIsRunning(false);
     setSessionStarted(false);
     setSessionCompleted(false);
+    elapsedSecondsRef.current = 0;
   };
 
   const handleToggle = () => {
     if (!isRunning && !sessionStarted) {
       setSessionStarted(true);
+      elapsedSecondsRef.current = 0;
+    }
+    // 暂停时记录部分时间
+    if (isRunning && sessionStarted && elapsedSecondsRef.current >= 60) {
+      const elapsedMin = Math.floor(elapsedSecondsRef.current / 60);
+      if (elapsedMin > 0) {
+        update((prevData) => {
+          const newData = addFocusSession(prevData, {
+            taskId: currentSubTask?.taskId || boundTaskId || null,
+            subTaskId: currentSubTask?.id || null,
+            taskTitle: currentSubTask?.title || boundTask?.title || modeConfig.label,
+            duration: elapsedMin,
+            mode,
+            completed: false,
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+          });
+          if (boundTaskId) {
+            return updateTask(newData, boundTaskId, {
+              actualTime: (boundTask?.actualTime || 0) + elapsedMin,
+            });
+          }
+          return newData;
+        });
+        showToast(`已记录 ${elapsedMin} 分钟专注时间`);
+      }
     }
     setIsRunning(!isRunning);
   };
 
   const handleReset = () => {
+    // 如果正在运行且有有效时间，记录
+    if (sessionStarted && isRunning && elapsedSecondsRef.current >= 60) {
+      const elapsedMin = Math.floor(elapsedSecondsRef.current / 60);
+      if (elapsedMin > 0) {
+        update((prevData) => {
+          const newData = addFocusSession(prevData, {
+            taskId: currentSubTask?.taskId || boundTaskId || null,
+            subTaskId: currentSubTask?.id || null,
+            taskTitle: currentSubTask?.title || boundTask?.title || modeConfig.label,
+            duration: elapsedMin,
+            mode,
+            completed: false,
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+          });
+          if (boundTaskId) {
+            return updateTask(newData, boundTaskId, {
+              actualTime: (boundTask?.actualTime || 0) + elapsedMin,
+            });
+          }
+          return newData;
+        });
+      }
+    }
     setTimeLeft(modeConfig.duration);
     setIsRunning(false);
     setSessionStarted(false);
     setSessionCompleted(false);
+    elapsedSecondsRef.current = 0;
+  };
+
+  const handleBindTask = (taskId: string | null) => {
+    setBoundTaskId(taskId);
+    setShowTaskPicker(false);
+    if (taskId) {
+      const task = data.tasks.find((t) => t.id === taskId);
+      if (task) showToast(`已绑定任务：${task.title}`);
+    } else {
+      showToast("已取消任务绑定");
+    }
   };
 
   const totalFocusMin = Math.floor(
@@ -273,6 +387,70 @@ export default function FocusPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 任务绑定区（无子任务时显示） */}
+      {!currentSubTask && !sessionCompleted && (
+        <div className="glass-card rounded-2xl p-4">
+          {boundTask ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-500/30 to-primary-600/30 flex items-center justify-center flex-shrink-0">
+                  <Link2 className="w-4 h-4 text-accent-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-dark-400">正在专注</p>
+                  <p className="text-sm font-medium text-white truncate">{boundTask.title}</p>
+                  <p className="text-[10px] text-dark-500 mt-0.5">
+                    已投入 {boundTask.actualTime} 分钟 · 预估 {formatEstimatedTime(boundTask.estimatedTime, boundTask.estimatedUnit)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleBindTask(null)}
+                className="p-2 rounded-lg hover:bg-dark-800/50 text-dark-400 hover:text-red-400 transition-colors flex-shrink-0"
+                title="取消绑定"
+              >
+                <Unlink className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowTaskPicker(!showTaskPicker)}
+              className="w-full flex items-center gap-3 text-left transition-colors"
+            >
+              <div className="w-9 h-9 rounded-lg bg-dark-800/50 flex items-center justify-center flex-shrink-0">
+                <Link2 className="w-4 h-4 text-dark-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-dark-300">绑定任务（可选）</p>
+                <p className="text-[10px] text-dark-500">专注时间会记录到任务</p>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-dark-400 transition-transform ${showTaskPicker ? "rotate-180" : ""}`} />
+            </button>
+          )}
+
+          {/* 任务选择列表 */}
+          {showTaskPicker && !boundTask && (
+            <div className="mt-3 space-y-1 max-h-48 overflow-y-auto">
+              {bindableTasks.length === 0 ? (
+                <p className="text-xs text-dark-500 text-center py-4">暂无可绑定的任务</p>
+              ) : (
+                bindableTasks.map((task) => (
+                  <button
+                    key={task.id}
+                    onClick={() => handleBindTask(task.id)}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-800/50 transition-colors text-left"
+                  >
+                    <Target className="w-3.5 h-3.5 text-dark-400 flex-shrink-0" />
+                    <span className="text-sm text-dark-200 truncate flex-1">{task.title}</span>
+                    <span className="text-[10px] text-dark-500 flex-shrink-0">{formatEstimatedTime(task.estimatedTime, task.estimatedUnit)}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -539,5 +717,13 @@ export default function FocusPage() {
       )}
     </AnimatePresence>
     </>
+  );
+}
+
+export default function FocusPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><div className="animate-pulse font-hand text-lg" style={{ color: "var(--color-ink)" }}>加载中...</div></div>}>
+      <FocusPageContent />
+    </Suspense>
   );
 }

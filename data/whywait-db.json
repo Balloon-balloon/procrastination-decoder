@@ -1,0 +1,47 @@
+{
+  "users": [
+    {
+      "id": "1e6efe6ad229f0c8f8ef4a3c277790da",
+      "username": "晚景jing",
+      "usernameKey": "晚景jing",
+      "email": "123456@qq.com",
+      "emailKey": "123456@qq.com",
+      "passwordHash": "10b192a6613686d7c03f9e504ac7dd08bf7781ccd269102d516a06862992c66b6a197ed81d83a8adcb1331d368a250190d9fb21b1d398a6d928b6ab1b3dca254",
+      "passwordSalt": "faadcf1423c56d091e28c08ea5b9bc0a",
+      "verified": false,
+      "verificationToken": "5f3fb50786f7cdab0ca189714d8d2cef052148bed5fa1a698b7be440a3568eb2",
+      "verificationExpiresAt": "2026-09-10T10:48:09.698Z",
+      "createdAt": "2026-09-09T10:48:09.607Z",
+      "lastLoginAt": "2026-09-09T10:48:09.607Z"
+    },
+    {
+      "id": "7ec8f2a22d8bd2778687192251039793",
+      "username": "testlink",
+      "usernameKey": "testlink",
+      "email": "1216939234@qq.com",
+      "emailKey": "1216939234@qq.com",
+      "passwordHash": "04e066f73d95d1edc4d4489d3dab39b4beea05a8df390b4044e8c2f13a688a7cf4e0025150a7f301dfc6a50aae4c6da05a7c1623c944824d69e2eba307f99fd5",
+      "passwordSalt": "d5d000bccb27dfc5a919e14a13305dba",
+      "verified": false,
+      "verificationToken": "02fe77832c6319405fe76f7d483c04be6f16a6e5fbf97993fe86348e556ab9db",
+      "verificationExpiresAt": "2026-09-10T11:15:28.256Z",
+      "createdAt": "2026-09-09T11:15:28.211Z",
+      "lastLoginAt": "2026-09-09T11:15:28.211Z"
+    },
+    {
+      "id": "e996ccc560e563b74764baf77543e893",
+      "username": "晚景妤",
+      "usernameKey": "晚景妤",
+      "email": "3250101945@zju.edu.cn",
+      "emailKey": "3250101945@zju.edu.cn",
+      "passwordHash": "5495f6bd25638d75d82fdea6b9cfaffb0ecb1b787bc5b61bc1b2fca6a1d4adcda7839308da4142a00a2fab6274915aa6ce061c917ea123af0e1cc312a23960dd",
+      "passwordSalt": "3092a48d8c0708cf36c29bc012280e93",
+      "verified": true,
+      "createdAt": "2026-09-09T11:15:52.923Z",
+      "lastLoginAt": "2026-09-09T11:16:06.615Z"
+    }
+  ],
+  "matchProfiles": [],
+  "partnerMatches": [],
+  "partnerNotifications": []
+}

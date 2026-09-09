@@ -52,7 +52,7 @@ export default function StudyRoomPage() {
 
   const enterRoom = (isPublic: boolean) => {
     if (todayRoomCount >= 3) {
-      showToast("今天已进出3个房间，明天再来吧", "warn");
+      showToast("今天已进出3个房间，明天再来吧", "warning");
       return;
     }
 
@@ -60,7 +60,9 @@ export default function StudyRoomPage() {
     const names = isPublic ? ROOM_NAMES_STUDENT : ROOM_NAMES_STUDENT;
     setRoomName(names[Math.floor(Math.random() * names.length)]);
 
-    // 生成座位（20个座位，随机一些有人）
+    // 生成座位：只有用户是真实的，其他是虚拟学伴（陪伴模式）
+    const virtualCount = Math.floor(Math.random() * 6) + 4; // 4-9个虚拟学伴
+    const usedEmojis: string[] = [];
     const newSeats: Seat[] = Array.from({ length: 20 }, (_, i) => {
       if (i === 0) {
         return {
@@ -74,17 +76,35 @@ export default function StudyRoomPage() {
           status: "studying" as const,
         };
       }
-      const mockUser = MOCK_USERS[Math.floor(Math.random() * MOCK_USERS.length)];
-      const hasUser = Math.random() > 0.4;
+      // 虚拟学伴
+      if (i <= virtualCount) {
+        let mockUser = MOCK_USERS[Math.floor(Math.random() * MOCK_USERS.length)];
+        let attempts = 0;
+        while (usedEmojis.includes(mockUser.emoji) && attempts < 8) {
+          mockUser = MOCK_USERS[Math.floor(Math.random() * MOCK_USERS.length)];
+          attempts++;
+        }
+        usedEmojis.push(mockUser.emoji);
+        return {
+          id: `seat-${i}`,
+          emoji: mockUser.emoji,
+          name: mockUser.name,
+          task: mockUser.task,
+          focusMinutes: Math.floor(Math.random() * 60) + 5,
+          isHost: false,
+          isMe: false,
+          status: Math.random() > 0.3 ? "studying" as const : "break" as const,
+        };
+      }
       return {
         id: `seat-${i}`,
-        emoji: hasUser ? mockUser.emoji : "",
-        name: hasUser ? mockUser.name : "",
-        task: hasUser ? mockUser.task : "",
-        focusMinutes: hasUser ? Math.floor(Math.random() * 120) : 0,
+        emoji: "",
+        name: "",
+        task: "",
+        focusMinutes: 0,
         isHost: false,
         isMe: false,
-        status: hasUser ? (Math.random() > 0.3 ? "studying" as const : "break" as const) : "empty" as const,
+        status: "empty" as const,
       };
     });
     setSeats(newSeats);
@@ -111,7 +131,7 @@ export default function StudyRoomPage() {
             playCompleteSound();
             setShowCelebration(true);
             const completed = seats.filter((s) => s.status === "studying").length;
-            showToast(`${completed}人完成了这轮专注！🎉`, "success");
+            showToast(`专注完成！你和 ${completed - 1} 位虚拟学伴一起坚持了下来 🎉`, "success");
             setTimeout(() => setShowCelebration(false), 3000);
             setTimerMode("break");
             return 5 * 60;
@@ -215,12 +235,16 @@ export default function StudyRoomPage() {
               📋 自习室规则
             </h3>
             <ul className="space-y-1.5 text-xs font-hand" style={{ color: "var(--text-secondary)" }}>
-              <li>· 房间上限 20 人，满员自动开新房间</li>
               <li>· 进入后开启集体番茄钟（25分钟专注 + 5分钟休息）</li>
               <li>· 专注期间只能发送预设鼓励语，不能自由打字</li>
               <li>· 每人每天最多进出 3 个不同房间</li>
               <li>· 每轮专注结束后全房间飘庆祝动画</li>
             </ul>
+            <div className="mt-3 pt-3 border-t" style={{ borderColor: "var(--divider)" }}>
+              <p className="text-xs font-hand" style={{ color: "var(--text-muted)" }}>
+                💡 自习室为陪伴模式，虚拟学伴陪你一起学习。虽然不是真人，但专注的氛围和计时都是真实的。
+              </p>
+            </div>
           </div>
 
           <p className="text-center text-xs font-hand" style={{ color: "var(--text-muted)" }}>
@@ -237,11 +261,17 @@ export default function StudyRoomPage() {
         {/* 房间头部 */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-hand text-lg font-bold" style={{ color: "var(--color-ink)" }}>
+            <h2 className="font-hand text-lg font-bold flex items-center gap-2" style={{ color: "var(--color-ink)" }}>
               {roomName}
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full font-hand"
+                style={{ background: "rgba(78,205,196,0.15)", color: "var(--color-neon-green)", border: "1px solid rgba(78,205,196,0.3)" }}
+              >
+                陪伴模式
+              </span>
             </h2>
             <p className="text-xs font-hand flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
-              <Users className="w-3 h-3" /> 当前 {studyingCount} 人在学
+              <Users className="w-3 h-3" /> 我（1人真实在线） + {studyingCount - 1} 位虚拟学伴
             </p>
           </div>
           <button
@@ -397,7 +427,7 @@ export default function StudyRoomPage() {
               >
                 GREAT JOB!
                 <p className="font-hand text-sm mt-2" style={{ color: "var(--color-ink)" }}>
-                  {studyingCount}人完成了这轮专注！
+                  你和 {studyingCount - 1} 位学伴完成了这轮专注！
                 </p>
               </motion.div>
             </motion.div>

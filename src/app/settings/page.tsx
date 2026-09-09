@@ -8,22 +8,20 @@ import { isMuted, setMuted } from "@/lib/sound";
 import {
   Palette, Volume2, Timer, Bell, User, HelpCircle,
   Camera, Sun, Moon, ChevronRight, Trash2, LogOut, Edit3,
-  RotateCcw, Send, Info,
+  Send, Info, BookOpen,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { logout } from "@/lib/auth";
+import { logoutUser } from "@/lib/auth";
+import Link from "next/link";
 
 const THEMMES = [
-  { name: "暖杏", color: "#FAD6A5", ink: "#2B3A67" },
-  { name: "墨蓝", color: "#2B3A67", ink: "#FAD6A5" },
-  { name: "薄荷", color: "#4ECDC4", ink: "#2B3A67" },
-  { name: "樱花粉", color: "#FFB7C5", ink: "#2B3A67" },
-  { name: "薰衣草", color: "#B19CD9", ink: "#2B3A67" },
-  { name: "日落橙", color: "#FF6B35", ink: "#FDF6E3" },
-  { name: "深海蓝", color: "#0D6E8E", ink: "#FDF6E3" },
-  { name: "森林绿", color: "#2D5F3F", ink: "#FDF6E3" },
-  { name: "暗夜黑", color: "#1A1A2E", ink: "#FAD6A5" },
-  { name: "极简白", color: "#FFFFFF", ink: "#2B3A67" },
+  { name: "暖杏", color: "#FAD6A5", ink: "#2B3A67", bg: "#FDF6E3" },
+  { name: "薄荷", color: "#A5D6BC", ink: "#2B5A50", bg: "#E8F5F3" },
+  { name: "樱花粉", color: "#FFCDD2", ink: "#6B2D3C", bg: "#FFF0F3" },
+  { name: "薰衣草", color: "#D4C5E8", ink: "#3D2B5A", bg: "#F0EBF8" },
+  { name: "日落橙", color: "#FFCC80", ink: "#4A2C14", bg: "#FFF3E0" },
+  { name: "森林绿", color: "#C5D5B5", ink: "#2B4A1A", bg: "#F0F4EC" },
+  { name: "极简白", color: "#F5F5F5", ink: "#1A1A1A", bg: "#FFFFFF" },
 ];
 
 const FONT_SIZES = [
@@ -63,8 +61,46 @@ export default function SettingsPage() {
     const savedTheme = localStorage.getItem("pd-theme");
     if (savedTheme) setTheme(parseInt(savedTheme));
     const savedFont = localStorage.getItem("pd-font-size");
-    if (savedFont) setFontSize(savedFont);
+    if (savedFont) {
+      setFontSize(savedFont);
+      document.documentElement.style.setProperty("--font-size-base", savedFont);
+      document.documentElement.style.fontSize = savedFont;
+    }
+    // 加载闹钟设置
+    const savedAlarm = localStorage.getItem("pd-alarm-settings");
+    if (savedAlarm) {
+      const a = JSON.parse(savedAlarm);
+      setWakeEnabled(a.wakeEnabled || false);
+      setWakeTime(a.wakeTime || "07:30");
+      setSleepEnabled(a.sleepEnabled || false);
+      setSleepTime(a.sleepTime || "23:00");
+    }
   }, []);
+
+  // 保存闹钟设置到 localStorage（AlarmManager 读取同一个 key）
+  useEffect(() => {
+    const saved = localStorage.getItem("pd-alarm-settings");
+    const prev = saved ? JSON.parse(saved) : {};
+    const alarmSettings = {
+      ...prev,
+      wakeEnabled,
+      wakeTime,
+      sleepEnabled,
+      sleepTime,
+      sleepEarlyMinutes: prev.sleepEarlyMinutes ?? 15,
+      wakeMessage: prev.wakeMessage ?? "新的一天开始了，起床解码拖延！",
+    };
+    localStorage.setItem("pd-alarm-settings", JSON.stringify(alarmSettings));
+  }, [wakeEnabled, wakeTime, sleepEnabled, sleepTime]);
+
+  // 请求通知权限
+  useEffect(() => {
+    if (wakeEnabled || sleepEnabled) {
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+  }, [wakeEnabled, sleepEnabled]);
 
   const updateTimerSettings = (key: string, value: any) => {
     const saved = localStorage.getItem("pd-timer-settings");
@@ -77,20 +113,26 @@ export default function SettingsPage() {
     setTheme(i);
     localStorage.setItem("pd-theme", String(i));
     const t = THEMMES[i];
-    document.documentElement.style.setProperty("--color-apricot", t.color);
-    document.documentElement.style.setProperty("--color-ink", t.ink);
+    const root = document.documentElement;
+    root.style.setProperty("--color-apricot", t.color);
+    root.style.setProperty("--color-ink", t.ink);
+    root.style.setProperty("--bg-primary", t.bg);
+    root.style.setProperty("--text-primary", t.ink);
+    root.style.setProperty("--text-secondary", t.ink);
+    root.style.setProperty("--text-muted", t.ink);
     showToast(`主题已切换为${t.name}`, "success");
   };
 
   const handleFontSize = (size: string) => {
     setFontSize(size);
     localStorage.setItem("pd-font-size", size);
-    document.body.style.fontSize = size;
+    document.documentElement.style.setProperty("--font-size-base", size);
+    document.documentElement.style.fontSize = size;
     showToast("字体大小已更新", "success");
   };
 
   const handleLogout = () => {
-    logout();
+    logoutUser();
     showToast("已退出登录", "info");
     setTimeout(() => router.push("/login"), 500);
   };
@@ -259,7 +301,9 @@ export default function SettingsPage() {
 
         {/* 帮助与反馈 */}
         <SectionCard icon={<HelpCircle className="w-4 h-4" />} title="帮助与反馈">
-          <ActionRow icon={<RotateCcw className="w-4 h-4" />} label="新手指南" onClick={() => { localStorage.removeItem("pd-onboarding-done"); showToast("下次进入将显示新手引导", "info"); }} />
+          <Link href="/guide" className="block">
+            <ActionRow icon={<BookOpen className="w-4 h-4" />} label="使用指南" onClick={() => {}} />
+          </Link>
           <ActionRow icon={<Send className="w-4 h-4" />} label="意见反馈" onClick={() => setShowFeedback(true)} />
           <ActionRow icon={<Info className="w-4 h-4" />} label="关于 WhyWait" onClick={() => showToast("WhyWait v1.0 · 别等了，开始吧 ⚡", "info")} />
         </SectionCard>

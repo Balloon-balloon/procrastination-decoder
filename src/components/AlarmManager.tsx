@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sun,
@@ -11,6 +11,7 @@ import {
   Coffee,
   Bed,
   ChevronRight,
+  Volume2,
 } from "lucide-react";
 
 type AlarmType = "wake" | "sleep";
@@ -49,17 +50,100 @@ export function AlarmManager() {
   const [earlyAlarm, setEarlyAlarm] = useState(false);
   const [locked, setLocked] = useState(false);
   const [showTaskLock, setShowTaskLock] = useState(false);
+  const [testing, setTesting] = useState(false);
 
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const soundLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastSettingsJson = useRef<string>("");
+
+  // 从 localStorage 同步设置（轮询 + storage 事件）
   useEffect(() => {
-    const saved = localStorage.getItem("pd-alarm-settings");
-    if (saved) {
-      setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
-    }
+    const syncFromStorage = () => {
+      const saved = localStorage.getItem("pd-alarm-settings");
+      if (!saved) return;
+      const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      const json = JSON.stringify(parsed);
+      if (json !== lastSettingsJson.current) {
+        lastSettingsJson.current = json;
+        setSettings(parsed);
+      }
+    };
+
+    syncFromStorage();
+    const interval = setInterval(syncFromStorage, 2000);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "pd-alarm-settings") syncFromStorage();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
+  // 写入设置到 localStorage
   useEffect(() => {
-    localStorage.setItem("pd-alarm-settings", JSON.stringify(settings));
+    const json = JSON.stringify(settings);
+    if (json !== lastSettingsJson.current) {
+      lastSettingsJson.current = json;
+      localStorage.setItem("pd-alarm-settings", json);
+    }
   }, [settings]);
+
+  // 闹钟铃声：循环播放
+  const startAlarmSound = () => {
+    stopAlarmSound();
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === "suspended") ctx.resume();
+      audioCtxRef.current = ctx;
+
+      const playOnce = () => {
+        if (!audioCtxRef.current) return;
+        const c = audioCtxRef.current;
+        const now = c.currentTime;
+        for (let i = 0; i < 3; i++) {
+          const t = now + i * 0.15;
+          [523, 659, 784].forEach((freq, j) => {
+            const osc = c.createOscillator();
+            const gain = c.createGain();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(freq, t + j * 0.05);
+            gain.gain.setValueAtTime(0.2, t + j * 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + j * 0.05 + 0.12);
+            osc.connect(gain).connect(c.destination);
+            osc.start(t + j * 0.05);
+            osc.stop(t + j * 0.05 + 0.12);
+          });
+        }
+      };
+
+      playOnce();
+      soundLoopRef.current = setInterval(playOnce, 1000);
+    } catch (e) {
+      console.error("闹钟铃声播放失败", e);
+    }
+  };
+
+  const stopAlarmSound = () => {
+    if (soundLoopRef.current) {
+      clearInterval(soundLoopRef.current);
+      soundLoopRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      try {
+        audioCtxRef.current.close();
+      } catch {}
+      audioCtxRef.current = null;
+    }
+  };
+
+  // 组件卸载时清理
+  useEffect(() => {
+    return () => stopAlarmSound();
+  }, []);
 
   // 检查闹钟触发
   useEffect(() => {
@@ -74,6 +158,7 @@ export function AlarmManager() {
         if (!triggered.wake) {
           setActiveAlarm("wake");
           sendNotification("起床啦！☀️", settings.wakeMessage);
+          startAlarmSound();
           triggered.wake = true;
           localStorage.setItem(todayKey, JSON.stringify(triggered));
         }
@@ -103,6 +188,7 @@ export function AlarmManager() {
           if (!triggered.sleep) {
             setActiveAlarm("sleep");
             sendNotification("该睡觉了！🌙", "今日已结束，未完成任务已自动延期");
+            startAlarmSound();
             triggered.sleep = true;
             localStorage.setItem(todayKey, JSON.stringify(triggered));
           }
@@ -111,7 +197,7 @@ export function AlarmManager() {
     };
 
     check();
-    const interval = setInterval(check, 30000);
+    const interval = setInterval(check, 10000);
     return () => clearInterval(interval);
   }, [settings]);
 
@@ -136,20 +222,43 @@ export function AlarmManager() {
   };
 
   const handleDismissWake = () => {
+    stopAlarmSound();
     setActiveAlarm(null);
-    // 推荐早起任务
     const task = EARLY_TASKS[Math.floor(Math.random() * EARLY_TASKS.length)];
     setEarlyAlarm(true);
     setTimeout(() => setEarlyAlarm(false), 5000);
   };
 
   const handleDismissSleep = () => {
+    stopAlarmSound();
     setActiveAlarm(null);
     setLocked(true);
     setShowTaskLock(true);
-    // 自动切换夜间模式
     document.body.classList.add("dark-mode");
     setTimeout(() => setShowTaskLock(false), 4000);
+  };
+
+  const handleSkipSleep = () => {
+    stopAlarmSound();
+    setActiveAlarm(null);
+  };
+
+  const handleExitDarkMode = () => {
+    document.body.classList.remove("dark-mode");
+    setLocked(false);
+    setShowTaskLock(false);
+  };
+
+  const handleTest = () => {
+    setTesting(true);
+    requestNotificationPermission().then(() => {
+      sendNotification("闹钟测试 🔔", "这是一条测试通知，闹钟功能正常！");
+      startAlarmSound();
+      setTimeout(() => {
+        stopAlarmSound();
+        setTesting(false);
+      }, 5000);
+    });
   };
 
   const update = (key: keyof AlarmSettings, value: any) => {
@@ -288,8 +397,25 @@ export function AlarmManager() {
               )}
             </div>
 
+            {/* 测试按钮 */}
+            <button
+              onClick={handleTest}
+              disabled={testing}
+              className="w-full mb-3 py-2 rounded-lg text-xs font-hand font-bold transition-all flex items-center justify-center gap-1.5"
+              style={{
+                background: testing ? "var(--divider)" : "rgba(255,107,53,0.1)",
+                color: testing ? "var(--text-muted)" : "var(--color-neon-orange)",
+                border: "1px solid var(--color-neon-orange)",
+              }}
+            >
+              <Volume2 className="w-3.5 h-3.5" />
+              {testing ? "测试中..." : "测试闹钟铃声"}
+            </button>
+
             <p className="text-[10px] font-hand text-center" style={{ color: "var(--text-muted)" }}>
-              {Notification.permission === "granted" ? "✅ 浏览器通知已开启" : "💡 建议开启浏览器通知以获得更好体验"}
+              {typeof Notification !== "undefined" && Notification.permission === "granted"
+                ? "✅ 浏览器通知已开启"
+                : "💡 建议开启浏览器通知以获得更好体验"}
             </p>
           </motion.div>
         )}
@@ -345,13 +471,22 @@ export function AlarmManager() {
               <p className="font-hand text-base mb-8" style={{ color: "rgba(255,255,255,0.7)" }}>
                 今日已结束，该休息了 🌙<br />未完成任务已自动延期
               </p>
-              <button
-                onClick={handleDismissSleep}
-                className="px-8 py-3 rounded-2xl text-sm font-hand font-bold transition-transform hover:scale-105"
-                style={{ background: "rgba(250,214,165,0.2)", color: "#FAD6A5", border: "2px solid rgba(250,214,165,0.5)" }}
-              >
-                <Bed className="w-5 h-5 inline mr-2" /> 晚安
-              </button>
+              <div className="flex flex-col gap-3 items-center">
+                <button
+                  onClick={handleDismissSleep}
+                  className="px-8 py-3 rounded-2xl text-sm font-hand font-bold transition-transform hover:scale-105"
+                  style={{ background: "rgba(250,214,165,0.2)", color: "#FAD6A5", border: "2px solid rgba(250,214,165,0.5)" }}
+                >
+                  <Bed className="w-5 h-5 inline mr-2" /> 晚安
+                </button>
+                <button
+                  onClick={handleSkipSleep}
+                  className="px-6 py-2 rounded-xl text-xs font-hand transition-transform hover:scale-105"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  还不想睡，稍后再说
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -387,6 +522,13 @@ export function AlarmManager() {
           >
             <div className="flex items-center gap-3 font-hand text-sm">
               <span>🔒 任务编辑已锁定，防止熬夜加任务</span>
+              <button
+                onClick={handleExitDarkMode}
+                className="px-3 py-1 rounded-lg text-xs font-hand transition-all hover:scale-105"
+                style={{ background: "rgba(250,214,165,0.2)", color: "#FAD6A5", border: "1px solid rgba(250,214,165,0.3)" }}
+              >
+                退出夜间模式
+              </button>
             </div>
           </motion.div>
         )}

@@ -13,6 +13,9 @@
   --bg-secondary: #F8EFD0;
   --bg-card: rgba(255, 252, 240, 0.85);
 
+  /* 字体大小（用户可调） */
+  --font-size-base: 15px;
+
   /* 主色：暖杏 + 墨蓝 */
   --color-apricot: #FAD6A5;
   --color-apricot-light: #FFF0D9;

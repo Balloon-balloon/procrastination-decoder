@@ -1,11 +1,12 @@
 "use client";
-import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, Suspense, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { PageTransition } from "@/components/Animations";
 import {
   registerUserWithEmail,
   loginUser,
   resendVerification,
+  verifyEmailByCode,
 } from "@/lib/auth";
 import { useAppData } from "@/hooks/useAppData";
 import {
@@ -19,13 +20,16 @@ import {
   Send,
   AlertCircle,
   CheckCircle2,
+  BookOpen,
+  RefreshCw,
+  Shield,
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { playClickSound, playErrorSound } from "@/lib/sound";
+import Link from "next/link";
 
 function LoginContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { currentUser, switchToUser, logout } = useAppData();
   const { showToast } = useToast();
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -38,17 +42,37 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [showResend, setShowResend] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [verifyCode, setVerifyCode] = useState("");
+  const [showVerifyInput, setShowVerifyInput] = useState(false);
+  const [demoCode, setDemoCode] = useState<string | null>(null);
+  // 人机验证：数学题
+  const [captchaA, setCaptchaA] = useState(0);
+  const [captchaB, setCaptchaB] = useState(0);
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+
+  const refreshCaptcha = () => {
+    setCaptchaA(Math.floor(Math.random() * 9) + 1);
+    setCaptchaB(Math.floor(Math.random() * 9) + 1);
+    setCaptchaAnswer("");
+  };
+
+  useEffect(() => {
+    refreshCaptcha();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
     setShowResend(false);
+    setDemoCode(null);
+    setShowVerifyInput(false);
     setLoading(true);
     playClickSound();
 
     await new Promise((r) => setTimeout(r, 500));
 
+    try {
     if (mode === "register") {
       if (password !== confirmPassword) {
         setError("两次输入的密码不一致");
@@ -56,48 +80,45 @@ function LoginContent() {
         setLoading(false);
         return;
       }
-      const result = registerUserWithEmail(username, email, password);
+      if (Number(captchaAnswer) !== captchaA + captchaB) {
+        setError("人机验证答案错误，请重新计算");
+        playErrorSound();
+        refreshCaptcha();
+        setLoading(false);
+        return;
+      }
+      const result = await registerUserWithEmail(username, email, password, Number(captchaAnswer), captchaA + captchaB);
       if (result.success && result.user) {
-        // 如果已自动验证（开发模式），直接登录
+        // 如果已自动验证（开发模式无验证），直接登录
         if (result.user.verified) {
           setSuccess("注册成功！正在为你登录...");
           showToast(`欢迎加入 whywait，${result.user.username} 🎉`, "success");
           switchToUser(result.user);
           setTimeout(() => router.push("/"), 800);
+        } else if (result.verificationCode) {
+          // 演示模式：显示验证码
+          setDemoCode(result.verificationCode);
+          setShowVerifyInput(true);
+          setUnverifiedEmail(email);
+          setSuccess(`注册成功！演示模式验证码：${result.verificationCode}`);
+          showToast("注册成功，请输入验证码完成验证", "success");
         } else {
-          // 生产模式：调用 API 发送验证邮件
-          try {
-            const res = await fetch("/api/auth/register", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: result.user.email,
-                username: result.user.username,
-                verificationToken: result.user.verificationToken,
-              }),
-            });
-            const data = await res.json();
-
-            if (data.verifyUrl) {
-              setSuccess(`验证邮件已发送到 ${email}，请查收邮箱`);
-            } else {
-              setSuccess(`验证邮件已发送到 ${email}，请查收邮箱并点击验证链接完成注册`);
-            }
-            setShowResend(true);
-            setUnverifiedEmail(email);
-            showToast("验证邮件已发送 📧", "success");
-          } catch {
-            setSuccess("注册成功，但邮件发送失败。请联系管理员或重试。");
-            setShowResend(true);
-            setUnverifiedEmail(email);
-          }
+          setSuccess(`验证邮件已发送到 ${email}，请查收邮箱并点击验证链接完成注册`);
+          setShowResend(true);
+          setUnverifiedEmail(email);
+          showToast("验证邮件已发送 📧", "success");
         }
       } else {
         setError(result.message);
+        if (result.requiresVerification) {
+          setShowResend(true);
+          setUnverifiedEmail(result.user?.email || email);
+        }
         playErrorSound();
+        refreshCaptcha();
       }
     } else {
-      const result = loginUser(username, password);
+      const result = await loginUser(username, password);
       if (result.success && result.user) {
         setSuccess("登录成功！");
         showToast(`欢迎回来，${result.user.username}`, "success");
@@ -105,37 +126,62 @@ function LoginContent() {
         setTimeout(() => router.push("/"), 500);
       } else {
         setError(result.message);
-        if (!result.user?.verified) {
+        if (result.user && !result.user.verified) {
           setShowResend(true);
           setUnverifiedEmail(result.user?.email || username);
         }
         playErrorSound();
       }
     }
-    setLoading(false);
+    } catch (error) {
+      console.error("Authentication request failed:", error);
+      setError("暂时无法连接账号服务，请检查网络后重试");
+      playErrorSound();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResend = async () => {
     if (!unverifiedEmail) return;
     playClickSound();
-    const result = resendVerification(unverifiedEmail);
-    if (result.success && result.user) {
-      try {
-        await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: result.user.email,
-            username: result.user.username,
-            verificationToken: result.user.verificationToken,
-          }),
-        });
-      } catch {}
-      showToast("验证邮件已重新发送 📧", "success");
-      setSuccess(`验证邮件已重新发送到 ${unverifiedEmail}`);
+    const result = await resendVerification(unverifiedEmail);
+    if (result.success) {
+      if (result.verificationCode) {
+        setDemoCode(result.verificationCode);
+        setShowVerifyInput(true);
+        showToast("验证码已重新生成", "success");
+        setSuccess(`新的验证码：${result.verificationCode}`);
+      } else {
+        showToast("验证邮件已重新发送 📧", "success");
+        setSuccess(`验证邮件已重新发送到 ${unverifiedEmail}`);
+      }
     } else {
       setError(result.message);
       playErrorSound();
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!unverifiedEmail || !verifyCode.trim()) return;
+    setLoading(true);
+    playClickSound();
+    try {
+      const result = await verifyEmailByCode(unverifiedEmail, verifyCode.trim());
+      if (result.success && result.user) {
+        setSuccess("验证成功！正在为你登录...");
+        showToast("邮箱验证成功 🎉", "success");
+        switchToUser(result.user);
+        setTimeout(() => router.push("/"), 800);
+      } else {
+        setError(result.message);
+        playErrorSound();
+      }
+    } catch {
+      setError("验证失败，请稍后重试");
+      playErrorSound();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -303,6 +349,46 @@ function LoginContent() {
                   </div>
                 )}
 
+                {/* 人机验证（注册时显示） */}
+                {mode === "register" && (
+                  <div>
+                    <label className="text-xs font-hand mb-1.5 block flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
+                      <Shield className="w-3.5 h-3.5" /> 人机验证
+                    </label>
+                    <div className="flex gap-2">
+                      <div
+                        className="flex-1 h-10 rounded-xl flex items-center justify-center gap-2 font-bold font-hand select-none"
+                        style={{
+                          background: "rgba(43,58,103,0.06)",
+                          border: "1px solid var(--divider)",
+                          color: "var(--color-ink)",
+                          letterSpacing: "0.1em",
+                        }}
+                      >
+                        {captchaA} + {captchaB} = ?
+                      </div>
+                      <button
+                        type="button"
+                        onClick={refreshCaptcha}
+                        className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors hover:scale-105"
+                        style={{ background: "rgba(43,58,103,0.06)", border: "1px solid var(--divider)" }}
+                        title="换一题"
+                      >
+                        <RefreshCw className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={captchaAnswer}
+                        onChange={(e) => setCaptchaAnswer(e.target.value.replace(/[^0-9]/g, ""))}
+                        placeholder="答案"
+                        className="w-20 px-3 py-2.5 rounded-xl text-sm font-hand text-center focus:outline-none"
+                        style={{ background: "rgba(255,252,240,0.8)", border: "1px solid var(--divider)", color: "var(--text-primary)" }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* 错误提示 */}
                 {error && (
                   <div className="p-3 rounded-lg text-sm font-hand flex items-start gap-2" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#EF4444" }}>
@@ -320,7 +406,7 @@ function LoginContent() {
                 )}
 
                 {/* 重发验证邮件 */}
-                {showResend && (
+                {showResend && !showVerifyInput && (
                   <button
                     type="button"
                     onClick={handleResend}
@@ -329,6 +415,59 @@ function LoginContent() {
                   >
                     <Send className="w-3.5 h-3.5" /> 重发验证邮件
                   </button>
+                )}
+
+                {/* 验证码输入（演示模式） */}
+                {showVerifyInput && (
+                  <div
+                    className="p-3 rounded-xl space-y-2"
+                    style={{ background: "rgba(250,214,165,0.2)", border: "1px solid var(--divider)" }}
+                  >
+                    <p className="text-xs font-hand" style={{ color: "var(--text-muted)" }}>
+                      请输入 4 位验证码完成验证
+                    </p>
+                    {demoCode && (
+                      <div
+                        className="text-center py-2 rounded-lg font-bold font-hand text-lg tracking-widest"
+                        style={{
+                          background: "var(--color-neon-orange)",
+                          color: "#fff",
+                          letterSpacing: "0.3em",
+                        }}
+                      >
+                        {demoCode}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={verifyCode}
+                        onChange={(e) => setVerifyCode(e.target.value.replace(/[^0-9]/g, ""))}
+                        placeholder="输入验证码"
+                        className="flex-1 px-3 py-2 rounded-lg text-sm font-hand text-center tracking-widest focus:outline-none"
+                        style={{ background: "rgba(255,252,240,0.9)", border: "1px solid var(--divider)", color: "var(--text-primary)" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyCode}
+                        disabled={loading || verifyCode.length < 4}
+                        className="px-4 py-2 rounded-lg text-xs font-bold font-hand transition-colors disabled:opacity-50"
+                        style={{ background: "var(--color-neon-green)", color: "var(--color-ink)" }}
+                      >
+                        验证
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      className="w-full text-xs font-hand flex items-center justify-center gap-1 transition-colors hover:underline"
+                      style={{ color: "var(--color-neon-orange)" }}
+                    >
+                      <RefreshCw className="w-3 h-3" /> 重新获取验证码
+                    </button>
+                  </div>
                 )}
 
                 {/* 提交按钮 */}
@@ -378,9 +517,16 @@ function LoginContent() {
               </p>
 
               <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--divider)" }}>
-                <p className="text-[10px] font-hand text-center" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[10px] font-hand text-center mb-2" style={{ color: "var(--text-muted)" }}>
                   💡 注册后需验证邮箱才能登录 · 每个账号数据独立存储
                 </p>
+                <Link
+                  href="/guide"
+                  className="flex items-center justify-center gap-1.5 text-xs font-hand transition-colors hover:underline"
+                  style={{ color: "var(--color-neon-orange)" }}
+                >
+                  <BookOpen className="w-3.5 h-3.5" /> 新手指南：了解如何使用 whywait
+                </Link>
               </div>
             </div>
           )}

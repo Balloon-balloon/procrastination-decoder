@@ -64,3 +64,30 @@ export function getWeekDates(): Date[] {
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
+
+// 根据截止日期自动计算紧急程度
+export function calculateAutoPriority(dueDate: string | null | undefined): "low" | "medium" | "high" | "urgent" {
+  if (!dueDate) return "medium";
+
+  const due = new Date(dueDate);
+  const now = new Date();
+  const diffMs = due.getTime() - now.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+  if (diffDays <= 0) return "urgent";      // 已过期或今天截止
+  if (diffDays <= 1) return "urgent";      // 1天内
+  if (diffDays <= 3) return "high";        // 3天内
+  if (diffDays <= 7) return "medium";      // 7天内
+  return "low";                            // 7天以上
+}
+
+// 获取实际优先级（如果是 auto 则自动计算）
+export function getEffectivePriority(
+  priority: string,
+  dueDate: string | null | undefined
+): "low" | "medium" | "high" | "urgent" {
+  if (priority === "auto") {
+    return calculateAutoPriority(dueDate);
+  }
+  return priority as "low" | "medium" | "high" | "urgent";
+}
