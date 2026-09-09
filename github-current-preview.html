@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhyWait - GitHub 当前版本预览</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Caveat:wght@400;500;600;700&family=Patrick+Hand&family=Amatic+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.7.0/style.css" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #FDF6E3;
+  --bg-secondary: #F8EFD0;
+  --bg-card: rgba(255, 252, 240, 0.85);
+  --color-apricot: #FAD6A5;
+  --color-ink: #2B3A67;
+  --color-neon-orange: #FF6B35;
+  --color-neon-green: #4ECDC4;
+  --text-primary: #2B3A67;
+  --text-secondary: #5A6480;
+  --text-muted: #8B93A8;
+  --divider: rgba(43, 58, 103, 0.12);
+  --card-border: rgba(43, 58, 103, 0.08);
+  --card-shadow: 0 2px 12px rgba(43, 58, 103, 0.08);
+  --sticky-yellow: #FFF9C4;
+  --sticky-pink: #FFCDD2;
+  --sticky-blue: #BBDEFB;
+  --sticky-green: #C8E6C9;
+  --sticky-orange: #FFE0B2;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Noto Sans SC', 'LXGW WenKai Screen', 'Patrick Hand', sans-serif;
+  background: var(--bg-primary);
+  background-image:
+    linear-gradient(rgba(43,58,103,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(43,58,103,0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+.font-sketch { font-family: 'Amatic SC', 'LXGW WenKai Screen', sans-serif; }
+.font-handwritten { font-family: 'Caveat', 'LXGW WenKai Screen', sans-serif; }
+.font-hand { font-family: 'Patrick Hand', 'LXGW WenKai Screen', sans-serif; }
+.font-pixel { font-family: 'Press Start 2P', monospace; }
+
+/* Layout */
+.app-container { display: flex; min-height: 100vh; }
+
+/* Navigation */
+.nav-sidebar {
+  width: 256px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--card-border);
+  padding: 16px 12px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  overflow-y: auto;
+  backdrop-filter: blur(12px);
+  z-index: 40;
+}
+.nav-section { margin-bottom: 16px; }
+.nav-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 0 12px 6px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.nav-item:hover { background: rgba(250,214,165,0.15); color: var(--color-ink); }
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(250,214,165,0.3), rgba(255,107,53,0.08));
+  color: var(--color-ink);
+  border-left: 3px solid var(--color-neon-orange);
+  font-weight: 700;
+}
+.nav-item .icon { width: 20px; height: 20px; flex-shrink: 0; }
+
+/* Main content */
+.main-content {
+  margin-left: 256px;
+  flex: 1;
+  padding: 24px 32px;
+  max-width: 900px;
+}
+
+/* Logo */
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 20px;
+  border-bottom: 1px solid var(--divider);
+  margin-bottom: 16px;
+}
+.logo-icon {
+  width: 40px; height: 40px;
+  background: var(--color-apricot);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  color: var(--color-ink);
+  border: 2px solid var(--color-ink);
+}
+.logo-text {
+  font-family: 'Amatic SC', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-ink);
+  letter-spacing: 2px;
+}
+.logo-sub {
+  font-family: 'Caveat', sans-serif;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* Sticky note cards */
+.sticky-note {
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 2px 3px 8px rgba(43,58,103,0.08);
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.sticky-note:hover {
+  transform: rotate(0deg) translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(43,58,103,0.15);
+}
+.pushpin {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px; height: 20px;
+  background: radial-gradient(circle at 35% 35%, #FF8559, #E84A1F);
+  border-radius: 50%;
+  box-shadow: 1px 2px 4px rgba(0,0,0,0.2);
+  z-index: 5;
+}
+.pushpin::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px; height: 6px;
+  background: #8B4513;
+  border-radius: 0 0 1px 1px;
+}
+
+/* Stat cards */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  text-align: center;
+}
+.stat-icon { width: 24px; height: 24px; margin: 0 auto 8px; color: var(--color-neon-orange); }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--color-ink); font-family: 'Amatic SC'; }
+.stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* Mood buttons */
+.mood-row { display: flex; gap: 8px; margin: 10px 0; }
+.mood-btn {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  background: var(--bg-card);
+  font-size: 24px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.mood-btn:hover { transform: scale(1.15); border-color: var(--color-neon-orange); }
+.mood-btn.selected { border-color: var(--color-neon-orange); background: var(--color-apricot); }
+
+/* Feature cards */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.feature-card {
+  padding: 18px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.feature-card:hover { transform: translateY(-3px); box-shadow: var(--card-shadow); }
+.feature-icon { width: 28px; height: 28px; margin-bottom: 8px; }
+.feature-title { font-size: 16px; font-weight: 700; color: var(--color-ink); margin-bottom: 4px; }
+.feature-desc { font-size: 12px; color: var(--text-muted); }
+
+/* Typewriter */
+.typewriter {
+  font-family: 'Amatic SC', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--color-ink);
+  letter-spacing: 3px;
+}
+.typewriter::after {
+  content: '|';
+  color: var(--color-neon-orange);
+  animation: blink 0.7s infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Pixel dog */
+.pixel-dog {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 64px; height: 64px;
+  background: radial-gradient(circle, rgba(255,107,53,0.15) 0%, transparent 70%);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  z-index: 50;
+  animation: breathe 2s ease-in-out infinite;
+}
+@keyframes breathe { 50% { transform: scale(1.08); } }
+.pixel-dog-inner { font-size: 32px; }
+
+/* Music indicator */
+.music-indicator {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  width: 44px; height: 44px;
+  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 50;
+}
+.music-bar {
+  width: 3px; background: var(--color-neon-orange); border-radius: 2px;
+  animation: bounce 0.5s ease-in-out infinite alternate;
+}
+@keyframes bounce { to { height: 14px; } }
+
+/* Page preview sections */
+.page-section {
+  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--card-shadow);
+}
+.section-title {
+  font-family: 'Amatic SC', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-desc {
+  font-family: 'Caveat', sans-serif;
+  font-size: 15px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* New badge */
+.new-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--color-neon-orange);
+  color: white;
+  margin-left: 8px;
+}
+
+/* Decode page */
+.decode-input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px dashed var(--card-border);
+  background: var(--bg-primary);
+  font-family: 'Patrick Hand', sans-serif;
+  font-size: 15px;
+  color: var(--text-primary);
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+  transition: border 0.2s;
+}
+.decode-input:focus { border-color: var(--color-neon-orange); }
+
+/* Community cards */
+.community-card {
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.community-card:hover { transform: translateX(4px); }
+
+/* Buttons */
+.btn-neon {
+  background: var(--color-neon-orange);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 3px 0 #C54821, 0 4px 8px rgba(255,107,53,0.3);
+  font-family: 'Patrick Hand', sans-serif;
+  font-size: 15px;
+}
+.btn-neon:active { transform: translateY(2px); box-shadow: 0 1px 0 #C54821; }
+.btn-mint {
+  background: var(--color-neon-green);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #2BB5AC, 0 4px 8px rgba(78,205,196,0.3);
+  font-family: 'Patrick Hand', sans-serif;
+  font-size: 15px;
+}
+
+/* Login card */
+.login-card {
+  max-width: 380px;
+  margin: 60px auto;
+  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: var(--card-shadow);
+}
+.input-field {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--bg-primary);
+  font-family: 'Patrick Hand', sans-serif;
+  font-size: 15px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border 0.2s;
+  margin-bottom: 10px;
+}
+.input-field:focus { border-color: var(--color-neon-orange); }
+
+/* Tags */
+.tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--color-neon-orange);
+  color: white;
+}
+
+/* Checklist */
+.checklist-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--divider);
+  font-size: 13px;
+}
+.checklist-item:last-child { border: none; }
+.check-icon { color: var(--color-neon-green); width: 18px; height: 18px; }
+
+/* Tab preview */
+.tab-preview {
+  display: flex; gap: 4px;
+  margin-bottom: 16px;
+}
+.tab-btn {
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--card-border);
+  background: var(--bg-primary);
+  color: var(--text-muted);
+}
+.tab-btn.active {
+  background: var(--color-neon-orange);
+  color: white;
+  border-color: var(--color-neon-orange);
+}
+
+/* Info banner */
+.info-banner {
+  background: linear-gradient(135deg, rgba(78,205,196,0.1), rgba(250,214,165,0.15));
+  border: 1px solid rgba(78,205,196,0.2);
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+/* Divider */
+.divider { height: 1px; background: var(--divider); margin: 16px 0; }
+
+/* Collapse button */
+.collapse-btn {
+  position: fixed;
+  top: 16px;
+  left: 228px;
+  z-index: 50;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--card-border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Navigation -->
+  <nav class="nav-sidebar">
+    <div class="logo-area">
+      <div class="logo-icon">W</div>
+      <div>
+        <div class="logo-text">whywait</div>
+        <div class="logo-sub">Why Wait?</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">核心功能</div>
+      <a class="nav-item active">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        仪表盘
+      </a>
+      <a class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.04Z"/></svg>
+        人格测试
+      </a>
+      <a class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        任务管理
+      </a>
+      <a class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></svg>
+        专注模式
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">陪伴 & 拆解</div>
+      <a class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l-1.9 5.8a2 2 0 0 1-1.287 1.287L3 12l5.8 1.9a2 2 0 0 1 1.287 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.287L21 12l-5.8-1.9a2 2 0 0 1-1.287-1.287L12 3Z"/></svg>
+        灵感拆解 <span class="new-badge">新</span>
+      </a>
+      <a class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        陪伴社区 <span class="new-badge">新</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">个人</div>
+      <a class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        我的
+      </a>
+      <a class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+        设置
+      </a>
+    </div>
+  </nav>
+
+  <!-- Collapse button -->
+  <button class="collapse-btn">◀</button>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Typewriter Logo -->
+    <div style="margin-bottom: 20px;">
+      <div class="typewriter">whywait</div>
+      <div class="logo-sub" style="margin-top: 4px;">解码拖延人格，重启行动力 ⚡</div>
+    </div>
+
+    <!-- Dashboard Preview -->
+    <div class="page-section">
+      <div class="section-title">📊 仪表盘 Dashboard</div>
+      <div class="section-desc">探索者，Why Wait? ⚡</div>
+
+      <!-- Mood -->
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">今日心情</div>
+        <div class="mood-row">
+          <button class="mood-btn selected">😄</button>
+          <button class="mood-btn">🙂</button>
+          <button class="mood-btn">😐</button>
+          <button class="mood-btn">😔</button>
+          <button class="mood-btn">😢</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Stats -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon">🔥</div>
+          <div class="stat-value">7</div>
+          <div class="stat-label">连续天数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-value">23</div>
+          <div class="stat-label">完成任务</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⏱️</div>
+          <div class="stat-value">5.2h</div>
+          <div class="stat-label">专注时长</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-value">78%</div>
+          <div class="stat-label">完成率</div>
+        </div>
+      </div>
+
+      <!-- Feature cards -->
+      <div class="feature-grid">
+        <div class="feature-card sticky-note" style="background: var(--sticky-green); transform: rotate(-1.5deg);">
+          <div class="pushpin"></div>
+          <div class="feature-icon">📝</div>
+          <div class="feature-title">任务管理</div>
+          <div class="feature-desc">创建、追踪、分析任务完成模式</div>
+        </div>
+        <div class="feature-card sticky-note" style="background: var(--sticky-yellow); transform: rotate(1deg);">
+          <div class="pushpin"></div>
+          <div class="feature-icon">🧠</div>
+          <div class="feature-title">人格测试</div>
+          <div class="feature-desc">测出你的拖延人格类型</div>
+        </div>
+        <div class="feature-card sticky-note" style="background: var(--sticky-pink); transform: rotate(-0.5deg);">
+          <div class="pushpin"></div>
+          <div class="feature-icon">⏰</div>
+          <div class="feature-title">专注模式</div>
+          <div class="feature-desc">番茄钟 + 熄屏后台计时</div>
+        </div>
+        <div class="feature-card sticky-note" style="background: var(--sticky-blue); transform: rotate(1.5deg);">
+          <div class="pushpin"></div>
+          <div class="feature-icon">📊</div>
+          <div class="feature-title">数据诊断</div>
+          <div class="feature-desc">可视化你的拖延模式</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decode Page (NEW) -->
+    <div class="page-section">
+      <div class="section-title">✨ 灵感拆解 <span class="new-badge">新页面</span></div>
+      <div class="section-desc">输入任务描述，AI 帮你拆解成可执行步骤</div>
+
+      <div class="tab-preview">
+        <button class="tab-btn active">新建拆解</button>
+        <button class="tab-btn">历史记录</button>
+      </div>
+
+      <textarea class="decode-input" placeholder="描述你的任务...例如：写微积分二重积分作业"></textarea>
+
+      <div style="display: flex; gap: 8px; margin-top: 12px; align-items: center;">
+        <button style="background: var(--bg-card); border: 1px dashed var(--card-border); border-radius: 10px; padding: 8px 12px; font-size: 12px; color: var(--text-muted); cursor: pointer;">
+          📎 上传文件/图片
+        </button>
+        <button class="btn-neon">开始拆解</button>
+      </div>
+
+      <div class="info-banner" style="margin-top: 16px;">
+        💡 支持上传图片/PDF/文档，AI 会根据内容智能拆解任务并评估阻力
+      </div>
+    </div>
+
+    <!-- Community Page (NEW) -->
+    <div class="page-section">
+      <div class="section-title">👥 陪伴社区 <span class="new-badge">新页面</span></div>
+      <div class="section-desc">你不是一个人在战斗</div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="community-card sticky-note" style="background: var(--sticky-green); transform: rotate(-1.5deg);">
+          <div class="pushpin"></div>
+          <div style="width: 48px; height: 48px; background: rgba(43,58,103,0.08); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px;">📚</div>
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 700; font-size: 16px;">自习室</span>
+              <span class="tag">实时陪伴</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">一起专注，互相陪伴的线上自习空间</div>
+          </div>
+          <div style="color: var(--text-muted); font-size: 20px;">›</div>
+        </div>
+
+        <div class="community-card sticky-note" style="background: var(--sticky-yellow); transform: rotate(1deg);">
+          <div class="pushpin"></div>
+          <div style="width: 48px; height: 48px; background: rgba(43,58,103,0.08); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px;">💬</div>
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 700; font-size: 16px;">树洞</span>
+              <span class="tag">匿名聊天</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">匿名倾诉，说说话，释放你的压力</div>
+          </div>
+          <div style="color: var(--text-muted); font-size: 20px;">›</div>
+        </div>
+
+        <div class="community-card sticky-note" style="background: var(--sticky-pink); transform: rotate(-0.5deg);">
+          <div class="pushpin"></div>
+          <div style="width: 48px; height: 48px; background: rgba(43,58,103,0.08); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px;">🐱</div>
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 700; font-size: 16px;">学伴</span>
+              <span class="tag">互助匹配</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">匹配学习伙伴，互相监督一起进步</div>
+          </div>
+          <div style="color: var(--text-muted); font-size: 20px;">›</div>
+        </div>
+      </div>
+
+      <div style="text-align: center; padding: 16px 0; font-family: 'Caveat'; font-size: 14px; color: var(--text-muted);">
+        一个人走得快，一群人走得远 ✨
+      </div>
+    </div>
+
+    <!-- Login Page -->
+    <div class="page-section">
+      <div class="section-title">🔐 注册/登录 + 邮箱验证</div>
+      <div class="section-desc">支持真实邮件发送（Resend / QQ SMTP）</div>
+
+      <div class="login-card" style="margin: 0;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div class="logo-icon" style="margin: 0 auto 8px;">W</div>
+          <div class="font-sketch" style="font-size: 24px; font-weight: 700;">whywait</div>
+        </div>
+
+        <div class="tab-preview" style="justify-content: center;">
+          <button class="tab-btn active">登录</button>
+          <button class="tab-btn">注册</button>
+        </div>
+
+        <input class="input-field" placeholder="用户名" value="探索者" />
+        <input class="input-field" placeholder="密码" type="password" value="••••••••" />
+
+        <button class="btn-neon" style="width: 100%; margin-top: 8px;">登录</button>
+
+        <div class="divider"></div>
+        <div style="text-align: center; font-size: 12px; color: var(--text-muted);">
+          还没有账号？<a href="#" style="color: var(--color-neon-orange);">注册</a> · 注册后需邮箱验证
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Page -->
+    <div class="page-section">
+      <div class="section-title">⚙️ 设置</div>
+      <div class="section-desc">外观 · 音效 · 专注 · 提醒 · 账号</div>
+
+      <div class="checklist-item">
+        <span class="check-icon">✓</span> 外观设置：10种主题色 + 字体大小滑块 + 夜间模式
+      </div>
+      <div class="checklist-item">
+        <span class="check-icon">✓</span> 音效与音乐：音效开关 + 音乐开关 + 音量 + 歌单切换
+      </div>
+      <div class="checklist-item">
+        <span class="check-icon">✓</span> 专注设置：熄屏宽容时间 + 自动继续 + 专注/休息时长
+      </div>
+      <div class="checklist-item">
+        <span class="check-icon">✓</span> 提醒设置：起床提醒 + 睡眠提醒
+      </div>
+      <div class="checklist-item">
+        <span class="check-icon">✓</span> 账号与安全：修改密码 + 注销账号 + 退出登录
+      </div>
+      <div class="checklist-item">
+        <span class="check-icon">✓</span> 帮助与反馈：新手指南 + 意见反馈 + 关于
+      </div>
+    </div>
+
+    <!-- Profile Page -->
+    <div class="page-section">
+      <div class="section-title">👤 我的（朋友圈风格）</div>
+      <div class="section-desc">个人主页 + 动态时间线</div>
+
+      <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
+        <div style="width: 72px; height: 72px; border-radius: 50%; background: var(--color-apricot); display: flex; align-items: center; justify-content: center; font-size: 36px; border: 3px solid white; box-shadow: var(--card-shadow);">🐼</div>
+        <div>
+          <div style="font-size: 18px; font-weight: 700; color: var(--color-ink);">探索者</div>
+          <div style="font-size: 12px; color: var(--text-muted);">在拖延中寻找行动力</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">📍 杭州 · #考研 #编程</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;">
+        <div style="text-align: center; padding: 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--card-border);">
+          <div style="font-size: 22px; font-weight: 700; color: var(--color-ink); font-family: 'Amatic SC';">23</div>
+          <div style="font-size: 10px; color: var(--text-muted);">累计完成</div>
+        </div>
+        <div style="text-align: center; padding: 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--card-border);">
+          <div style="font-size: 22px; font-weight: 700; color: var(--color-ink); font-family: 'Amatic SC';">5.2h</div>
+          <div style="font-size: 10px; color: var(--text-muted);">累计专注</div>
+        </div>
+        <div style="text-align: center; padding: 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--card-border);">
+          <div style="font-size: 22px; font-weight: 700; color: var(--color-ink); font-family: 'Amatic SC';">7</div>
+          <div style="font-size: 10px; color: var(--text-muted);">连续打卡</div>
+        </div>
+      </div>
+
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">动态时间线：</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-green);">✅</span> 完成任务「微积分作业第三题」· 2小时前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-orange);">⏱️</span> 专注 25 分钟 · 3小时前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-green);">🏆</span> 达成成就「连续7天打卡」· 昨天</div>
+    </div>
+
+    <!-- Guide Page (NEW) -->
+    <div class="page-section">
+      <div class="section-title">📖 新手引导 <span class="new-badge">新页面</span></div>
+      <div class="section-desc">首次登录自动触发的功能引导</div>
+
+      <div class="info-banner">
+        6 步引导：仪表盘 → 人格测试 → 任务管理 → 专注模式 → 数据诊断 → 像素小狗
+        <br>高亮遮罩 + 气泡提示 + "开始使用！"结束
+      </div>
+    </div>
+
+    <!-- Tech Stack -->
+    <div class="page-section">
+      <div class="section-title">🏗️ 技术架构</div>
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px;">
+        <div class="checklist-item"><span class="check-icon">✓</span> Next.js 14 App Router + TypeScript</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> Tailwind CSS + Framer Motion 动画</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> Web Worker 熄屏后台计时</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> Resend / Nodemailer 邮件发送</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> scrypt 密码加密（服务端）</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> JSON 文件数据库（whywait-db.json）</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> GitHub Actions CI/CD 部署</div>
+        <div class="checklist-item"><span class="check-icon">✓</span> 8-bit 音效 + Kamasutra 背景音乐</div>
+      </div>
+    </div>
+
+    <!-- Commit History -->
+    <div class="page-section">
+      <div class="section-title">📝 GitHub 提交历史（8 commits）</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-orange);">●</span> <b>Balloon-balloon</b> · failure · 2天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-orange);">●</span> <b>Balloon-balloon</b> · 修改了1 2 4，3是否修改成功待定 · 2天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-orange);">●</span> <b>Balloon-balloon</b> · 修改 · 2天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-green);">●</span> <b>Balloon-balloon</b> · feat: 灵感拆解页面、陪伴社区、邮箱验证完善、导航重构、字体大小修复 · 3天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-green);">●</span> <b>Liuzh7225</b> · feat: enhance focus mode, file upload, studyroom, guide · 4天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-orange);">●</span> <b>iridescent2026</b> · feat: complete whywait app with all features · 4天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-orange);">●</span> <b>iridescent2026</b> · ci: add GitHub Actions deploy workflow · 5天前</div>
+      <div class="checklist-item"><span style="color: var(--text-muted);">●</span> <b>iridescent2026</b> · feat: complete procrastination decoder app · 6天前</div>
+    </div>
+
+    <!-- Contributors -->
+    <div class="page-section">
+      <div class="section-title">👥 贡献者（3人）</div>
+      <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--card-border);">
+          <span style="font-size: 20px;">🎈</span>
+          <div><div style="font-weight: 700; font-size: 13px;">Balloon-balloon</div><div style="font-size: 10px; color: var(--text-muted);">导航重构 · 灵感拆解 · 陪伴社区</div></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--card-border);">
+          <span style="font-size: 20px;">💻</span>
+          <div><div style="font-weight: 700; font-size: 13px;">Liuzh7225</div><div style="font-size: 10px; color: var(--text-muted);">专注模式 · 文件上传 · 自习室</div></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--card-border);">
+          <span style="font-size: 20px;">✨</span>
+          <div><div style="font-weight: 700; font-size: 13px;">iridescent2026</div><div style="font-size: 10px; color: var(--text-muted);">完整版 whywait · CI/CD · 邮箱验证</div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Pixel Dog -->
+<div class="pixel-dog">
+  <div class="pixel-dog-inner">🐕</div>
+</div>
+
+<!-- Music Indicator -->
+<div class="music-indicator">
+  <div style="display: flex; gap: 2px; align-items: center; height: 16px;">
+    <div class="music-bar" style="height: 6px; animation-delay: 0s;"></div>
+    <div class="music-bar" style="height: 10px; animation-delay: 0.12s;"></div>
+    <div class="music-bar" style="height: 14px; animation-delay: 0.24s;"></div>
+    <div class="music-bar" style="height: 8px; animation-delay: 0.36s;"></div>
+  </div>
+</div>
+
+</body>
+</html>

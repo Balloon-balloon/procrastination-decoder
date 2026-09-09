@@ -48,16 +48,11 @@ export function OnboardingGuide() {
   const [stepIndex, setStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   useEffect(() => {
-    const checkReady = () => {
-      const currentUser = getCurrentUser();
-      if (currentUser?.isFirstLogin && !localStorage.getItem(`pd-onboarding-done-${currentUser.id}`)) {
-        setTimeout(() => setShow(true), 1000);
-      }
-    };
-
-    checkReady();
-    const interval = setInterval(checkReady, 2000);
-    return () => clearInterval(interval);
+    const user = getCurrentUser();
+    if (user?.isFirstLogin && !localStorage.getItem(`pd-onboarding-done-${user.id}`)) {
+      const timer = setTimeout(() => setShow(true), 1000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   useEffect(() => {

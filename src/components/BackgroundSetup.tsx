@@ -10,6 +10,7 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
+import { getCurrentUser, markFirstLoginDone } from "@/lib/auth";
 
 type ThemeColor = {
   id: string;
@@ -19,14 +20,11 @@ type ThemeColor = {
 
 const THEME_COLORS: ThemeColor[] = [
   { id: "warm", name: "暖杏", colors: { bg: "#FDF6E3", apricot: "#FAD6A5", ink: "#2B3A67", neonOrange: "#FF6B35", neonGreen: "#4ECDC4" } },
-  { id: "ink", name: "墨蓝", colors: { bg: "#1A2440", apricot: "#FAD6A5", ink: "#E8EAF0", neonOrange: "#FF6B35", neonGreen: "#4ECDC4" } },
   { id: "mint", name: "薄荷", colors: { bg: "#E8F5F3", apricot: "#A5D6BC", ink: "#2B5A50", neonOrange: "#FF8C5A", neonGreen: "#2E9A92" } },
   { id: "sakura", name: "樱花粉", colors: { bg: "#FFF0F3", apricot: "#FFCDD2", ink: "#6B2D3C", neonOrange: "#FF6B6B", neonGreen: "#7FD8BE" } },
   { id: "lavender", name: "薰衣草", colors: { bg: "#F0EBF8", apricot: "#D4C5E8", ink: "#3D2B5A", neonOrange: "#FF8C5A", neonGreen: "#7FD8C4" } },
   { id: "sunset", name: "日落橙", colors: { bg: "#FFF3E0", apricot: "#FFCC80", ink: "#4A2C14", neonOrange: "#FF5722", neonGreen: "#66BB6A" } },
-  { id: "ocean", name: "深海蓝", colors: { bg: "#0D1B2A", apricot: "#5C7A99", ink: "#E0E7EE", neonOrange: "#FF8C42", neonGreen: "#48CAE4" } },
   { id: "forest", name: "森林绿", colors: { bg: "#F0F4EC", apricot: "#C5D5B5", ink: "#2B4A1A", neonOrange: "#FF8C42", neonGreen: "#5A8A3A" } },
-  { id: "dark", name: "暗夜黑", colors: { bg: "#121212", apricot: "#333333", ink: "#E0E0E0", neonOrange: "#FF6B35", neonGreen: "#4ECDC4" } },
   { id: "white", name: "极简白", colors: { bg: "#FFFFFF", apricot: "#F5F5F5", ink: "#1A1A1A", neonOrange: "#FF6B35", neonGreen: "#4ECDC4" } },
 ];
 
@@ -42,11 +40,13 @@ export function BackgroundSetup() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const hasSeen = localStorage.getItem("pd-bg-setup-done");
-    if (!hasSeen) {
-      const timer = setTimeout(() => setShow(true), 500);
-      return () => clearTimeout(timer);
-    }
+    const user = getCurrentUser();
+    if (!user) return;
+    if (!user.isFirstLogin) return;
+    const doneKey = `pd-bg-setup-done-${user.id}`;
+    if (localStorage.getItem(doneKey)) return;
+    const timer = setTimeout(() => setShow(true), 500);
+    return () => clearTimeout(timer);
   }, []);
 
   const applyTheme = (themeId: string) => {
@@ -58,6 +58,9 @@ export function BackgroundSetup() {
     root.style.setProperty("--color-ink", theme.colors.ink);
     root.style.setProperty("--color-neon-orange", theme.colors.neonOrange);
     root.style.setProperty("--color-neon-green", theme.colors.neonGreen);
+    root.style.setProperty("--text-primary", theme.colors.ink);
+    root.style.setProperty("--text-secondary", theme.colors.ink);
+    root.style.setProperty("--text-muted", theme.colors.ink);
   };
 
   const handleSelectTheme = (themeId: string) => {
@@ -131,8 +134,13 @@ export function BackgroundSetup() {
   }, [cameraStream]);
 
   const handleFinish = () => {
-    localStorage.setItem("pd-bg-setup-done", "true");
-    localStorage.setItem("pd-theme", selectedTheme);
+    const user = getCurrentUser();
+    if (user) {
+      localStorage.setItem(`pd-bg-setup-done-${user.id}`, "true");
+      markFirstLoginDone(user.id);
+    }
+    const themeIdx = THEME_COLORS.findIndex((t) => t.id === selectedTheme);
+    localStorage.setItem("pd-theme", String(themeIdx >= 0 ? themeIdx : 0));
     setShow(false);
   };
 

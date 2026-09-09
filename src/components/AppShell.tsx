@@ -41,12 +41,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("click", handleClick);
   }, [isLoginPage]);
 
-  // 加载自定义背景
+  // 加载自定义背景 + 恢复主题色
   useEffect(() => {
     const customBg = localStorage.getItem("pd-custom-bg");
     if (customBg) {
       const blur = localStorage.getItem("pd-blur") || "8";
-      const overlay = localStorage.getItem("pd-overlay") || "0.3";
       const bgLayer = document.querySelector(".custom-bg-layer") as HTMLElement;
       if (bgLayer) {
         bgLayer.style.backgroundImage = `url(${customBg})`;
@@ -54,11 +53,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         bgLayer.style.opacity = "1";
       }
     }
-    // 加载主题色
-    const savedTheme = localStorage.getItem("pd-theme");
-    if (savedTheme) {
-      const event = new CustomEvent("apply-theme", { detail: savedTheme });
-      window.dispatchEvent(event);
+    // 恢复主题色到 CSS 变量
+    const savedThemeIdx = localStorage.getItem("pd-theme");
+    const THEMES = [
+      { color: "#FAD6A5", ink: "#2B3A67", bg: "#FDF6E3" },
+      { color: "#A5D6BC", ink: "#2B5A50", bg: "#E8F5F3" },
+      { color: "#FFCDD2", ink: "#6B2D3C", bg: "#FFF0F3" },
+      { color: "#D4C5E8", ink: "#3D2B5A", bg: "#F0EBF8" },
+      { color: "#FFCC80", ink: "#4A2C14", bg: "#FFF3E0" },
+      { color: "#C5D5B5", ink: "#2B4A1A", bg: "#F0F4EC" },
+      { color: "#F5F5F5", ink: "#1A1A1A", bg: "#FFFFFF" },
+    ];
+    if (savedThemeIdx) {
+      const idx = parseInt(savedThemeIdx);
+      const t = THEMES[idx];
+      if (t) {
+        const root = document.documentElement;
+        root.style.setProperty("--color-apricot", t.color);
+        root.style.setProperty("--color-ink", t.ink);
+        root.style.setProperty("--bg-primary", t.bg);
+        root.style.setProperty("--text-primary", t.ink);
+        root.style.setProperty("--text-secondary", t.ink);
+        root.style.setProperty("--text-muted", t.ink);
+      }
     }
   }, []);
 
@@ -66,7 +83,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <>
         <PageLoader show={loading} />
-        <BackgroundSetup />
         {children}
       </>
     );

@@ -27,11 +27,10 @@ export async function POST(req: NextRequest) {
 
     const usernameKey = username.toLocaleLowerCase();
     const emailKey = email.toLocaleLowerCase();
-    const needsVerification = hasEmailService();
+    const hasEmail = hasEmailService();
     const now = new Date().toISOString();
-    const verificationToken = needsVerification ? createId() + createId() : undefined;
-    // 开发模式：生成4位数字验证码
-    const verificationCode = !needsVerification ? generateVerifyCode() : undefined;
+    const verificationToken = hasEmail ? createId() + createId() : undefined;
+    const verificationCode = !hasEmail ? generateVerifyCode() : undefined;
     const { hash, salt } = hashPassword(password);
 
     const created = await withDatabase((database) => {
@@ -39,7 +38,8 @@ export async function POST(req: NextRequest) {
       if (database.users.some((user) => user.emailKey === emailKey)) return { error: "该邮箱已注册" } as const;
       const user = {
         id: createId(), username, usernameKey, email, emailKey,
-        passwordHash: hash, passwordSalt: salt, verified: !needsVerification && !verificationCode,
+        passwordHash: hash, passwordSalt: salt,
+        verified: !hasEmail && !verificationCode,
         verificationToken,
         verificationCode,
         verificationExpiresAt: (verificationToken || verificationCode) ? new Date(Date.now() + 86400000).toISOString() : undefined,
@@ -50,23 +50,26 @@ export async function POST(req: NextRequest) {
     });
     if ("error" in created) return NextResponse.json({ success: false, message: created.error }, { status: 409 });
 
-    if (needsVerification && verificationToken) {
+    if (hasEmail && verificationToken) {
       const verifyUrl = `${req.nextUrl.origin}${req.nextUrl.basePath || ""}/verify?token=${verificationToken}`;
       try {
         await sendVerificationEmail({ email, username, verifyUrl });
+        return NextResponse.json({
+          success: true,
+          message: "注册成功，验证链接已发送到你的邮箱，请点击邮件中的链接完成验证",
+          requiresVerification: true,
+          user: toPublicUser(created.user),
+        });
       } catch (error) {
         console.error("Registration email error:", error);
         return NextResponse.json({
           success: false,
-          message: "账号已保存，但验证邮件发送失败，请稍后点击重发",
-          requiresVerification: true,
-          user: toPublicUser(created.user),
+          message: "验证邮件发送失败，请检查邮箱地址或稍后重试",
         }, { status: 502 });
       }
-      return NextResponse.json({ success: true, message: "注册成功，请查收验证邮件", requiresVerification: true, user: toPublicUser(created.user) });
     }
 
-    // 开发/演示模式：返回验证码
+    // 演示模式：返回验证码
     if (verificationCode) {
       return NextResponse.json({
         success: true,
@@ -77,7 +80,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, message: "注册成功，已自动登录", requiresVerification: false, user: toPublicUser(created.user) });
+    // 无需验证：直接注册成功，自动登录
+    return NextResponse.json({
+      success: true,
+      message: "注册成功，已自动登录",
+      requiresVerification: false,
+      user: toPublicUser(created.user),
+    });
   } catch (error) {
     console.error("Registration error:", error);
     return NextResponse.json({ success: false, message: "注册服务暂时不可用" }, { status: 500 });

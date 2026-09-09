@@ -27,8 +27,13 @@ export async function POST(req: NextRequest) {
 
     if (hasEmailService()) {
       const verifyUrl = `${req.nextUrl.origin}${req.nextUrl.basePath || ""}/verify?token=${result.user.verificationToken}`;
-      await sendVerificationEmail({ email: result.user.email, username: result.user.username, verifyUrl });
-      return NextResponse.json({ success: true, message: "验证邮件已重新发送" });
+      try {
+        await sendVerificationEmail({ email: result.user.email, username: result.user.username, verifyUrl });
+        return NextResponse.json({ success: true, message: "验证邮件已重新发送，请查收" });
+      } catch (error) {
+        console.error("Resend email error:", error);
+        return NextResponse.json({ success: false, message: "邮件发送失败，请稍后重试" }, { status: 502 });
+      }
     }
 
     // 演示模式：返回新的验证码

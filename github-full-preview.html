@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhyWait - GitHub 完整版本预览</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Caveat:wght@400;500;600;700&family=Patrick+Hand&family=Amatic+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.7.0/style.css" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #FDF6E3;
+  --bg-secondary: #F8EFD0;
+  --bg-card: rgba(255, 252, 240, 0.85);
+  --color-apricot: #FAD6A5;
+  --color-ink: #2B3A67;
+  --color-neon-orange: #FF6B35;
+  --color-neon-green: #4ECDC4;
+  --text-primary: #2B3A67;
+  --text-secondary: #5A6480;
+  --text-muted: #8B93A8;
+  --divider: rgba(43, 58, 103, 0.12);
+  --card-border: rgba(43, 58, 103, 0.08);
+  --card-shadow: 0 2px 12px rgba(43, 58, 103, 0.08);
+  --sticky-yellow: #FFF9C4;
+  --sticky-pink: #FFCDD2;
+  --sticky-blue: #BBDEFB;
+  --sticky-green: #C8E6C9;
+  --sticky-orange: #FFE0B2;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Noto Sans SC', 'LXGW WenKai Screen', 'Patrick Hand', sans-serif;
+  background: var(--bg-primary);
+  background-image:
+    linear-gradient(rgba(43,58,103,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(43,58,103,0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+.font-sketch { font-family: 'Amatic SC', sans-serif; }
+.font-handwritten { font-family: 'Caveat', sans-serif; }
+.font-hand { font-family: 'Patrick Hand', 'LXGW WenKai Screen', sans-serif; }
+.font-pixel { font-family: 'Press Start 2P', monospace; }
+
+.app-container { display: flex; min-height: 100vh; }
+
+/* Navigation */
+.nav-sidebar {
+  width: 256px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--card-border);
+  padding: 16px 12px;
+  position: fixed; top: 0; left: 0;
+  height: 100vh; overflow-y: auto;
+  backdrop-filter: blur(12px); z-index: 40;
+}
+.nav-section { margin-bottom: 16px; }
+.nav-section-title {
+  font-size: 10px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 1px; padding: 0 12px 6px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 12px; cursor: pointer;
+  transition: all 0.2s; text-decoration: none;
+  color: var(--text-secondary); font-size: 14px; font-weight: 500; margin-bottom: 2px;
+}
+.nav-item:hover { background: rgba(250,214,165,0.15); color: var(--color-ink); }
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(250,214,165,0.3), rgba(255,107,53,0.08));
+  color: var(--color-ink); border-left: 3px solid var(--color-neon-orange); font-weight: 700;
+}
+.nav-item .icon { width: 20px; height: 20px; flex-shrink: 0; }
+
+/* Logo */
+.logo-area { display: flex; align-items: center; gap: 12px; padding: 8px 12px 20px; border-bottom: 1px solid var(--divider); margin-bottom: 16px; }
+.logo-icon { width: 40px; height: 40px; background: var(--color-apricot); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-family: 'Press Start 2P'; font-size: 18px; color: var(--color-ink); border: 2px solid var(--color-ink); }
+.logo-text { font-family: 'Amatic SC'; font-size: 28px; font-weight: 700; color: var(--color-ink); letter-spacing: 2px; }
+.logo-sub { font-family: 'Caveat'; font-size: 14px; color: var(--text-muted); }
+
+.main-content { margin-left: 256px; flex: 1; padding: 24px 32px; max-width: 900px; }
+
+/* Sticky note */
+.sticky-note { border-radius: 8px; padding: 16px; box-shadow: 2px 3px 8px rgba(43,58,103,0.08); position: relative; transition: transform 0.2s, box-shadow 0.2s; }
+.sticky-note:hover { transform: rotate(0deg) translateY(-2px) !important; box-shadow: 0 6px 20px rgba(43,58,103,0.15); }
+.pushpin { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; background: radial-gradient(circle at 35% 35%, #FF8559, #E84A1F); border-radius: 50%; box-shadow: 1px 2px 4px rgba(0,0,0,0.2); z-index: 5; }
+.pushpin::after { content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 2px; height: 6px; background: #8B4513; }
+
+/* Page section */
+.page-section { background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 20px; padding: 24px; margin-bottom: 20px; box-shadow: var(--card-shadow); }
+.section-title { font-family: 'Amatic SC'; font-size: 26px; font-weight: 700; color: var(--color-ink); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.section-desc { font-family: 'Caveat'; font-size: 15px; color: var(--text-muted); margin-bottom: 16px; }
+
+.new-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: var(--color-neon-orange); color: white; margin-left: 8px; }
+.tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: var(--color-neon-orange); color: white; }
+.tag-mint { background: var(--color-neon-green); }
+
+.divider { height: 1px; background: var(--divider); margin: 16px 0; }
+
+/* Login */
+.login-card { max-width: 400px; background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 24px; padding: 32px; box-shadow: var(--card-shadow); }
+.input-field { width: 100%; padding: 12px 14px; border: 2px solid var(--card-border); border-radius: 12px; background: var(--bg-primary); font-family: 'Patrick Hand'; font-size: 15px; color: var(--text-primary); outline: none; margin-bottom: 10px; }
+.input-field:focus { border-color: var(--color-neon-orange); }
+
+/* Captcha */
+.captcha-box { background: linear-gradient(135deg, #FFF9C4, #FFE0B2); border: 2px solid var(--color-apricot); border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.captcha-emoji { font-size: 28px; }
+.captcha-text { font-family: 'Patrick Hand'; font-size: 18px; color: var(--color-ink); font-weight: 700; }
+.captcha-input { flex: 1; padding: 8px 12px; border: 2px solid var(--color-apricot); border-radius: 8px; background: white; font-family: 'Patrick Hand'; font-size: 16px; color: var(--text-primary); outline: none; width: 60px; }
+.captcha-input:focus { border-color: var(--color-neon-orange); }
+.captcha-refresh { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--card-border); background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+/* Verification code */
+.verify-code-box { background: linear-gradient(135deg, rgba(78,205,196,0.15), rgba(250,214,165,0.2)); border: 2px dashed var(--color-neon-green); border-radius: 14px; padding: 16px; text-align: center; margin-bottom: 12px; }
+.verify-code-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+.verify-code { font-family: 'Press Start 2P'; font-size: 28px; color: var(--color-ink); letter-spacing: 8px; }
+.verify-code-input { width: 100%; padding: 12px; border: 2px solid var(--card-border); border-radius: 12px; background: var(--bg-primary); font-family: 'Press Start 2P'; font-size: 20px; text-align: center; letter-spacing: 8px; color: var(--text-primary); outline: none; margin-bottom: 10px; }
+.verify-code-input:focus { border-color: var(--color-neon-orange); }
+
+/* Buttons */
+.btn-neon { background: var(--color-neon-orange); color: white; border: none; padding: 10px 24px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s; box-shadow: 0 3px 0 #C54821, 0 4px 8px rgba(255,107,53,0.3); font-family: 'Patrick Hand'; font-size: 15px; }
+.btn-neon:active { transform: translateY(2px); box-shadow: 0 1px 0 #C54821; }
+.btn-mint { background: var(--color-neon-green); color: white; border: none; padding: 10px 24px; border-radius: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 3px 0 #2BB5AC; font-family: 'Patrick Hand'; font-size: 15px; }
+.btn-ghost { background: transparent; border: 1px solid var(--card-border); color: var(--text-secondary); padding: 8px 16px; border-radius: 10px; cursor: pointer; font-family: 'Patrick Hand'; font-size: 13px; }
+
+/* Tabs */
+.tab-row { display: flex; gap: 4px; margin-bottom: 16px; }
+.tab-btn { padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid var(--card-border); background: var(--bg-primary); color: var(--text-muted); }
+.tab-btn.active { background: var(--color-neon-orange); color: white; border-color: var(--color-neon-orange); }
+
+/* Onboarding guide */
+.guide-overlay { position: relative; background: rgba(0,0,0,0.6); border-radius: 20px; padding: 40px; }
+.guide-highlight { border: 3px solid var(--color-neon-orange); border-radius: 12px; box-shadow: 0 0 20px rgba(255,107,53,0.4); background: var(--bg-primary); padding: 16px; }
+.guide-bubble { background: var(--bg-primary); border: 1px solid var(--divider); border-radius: 16px; padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); margin-top: 12px; max-width: 320px; }
+.guide-step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--divider); display: inline-block; }
+.guide-step-dot.active { width: 20px; background: var(--color-neon-orange); border-radius: 4px; }
+
+/* Guide page (手风琴) */
+.accordion-item { border-radius: 12px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--card-border); }
+.accordion-item.expanded { border-color: var(--color-neon-orange); }
+.accordion-header { display: flex; align-items: center; gap: 12px; padding: 14px; cursor: pointer; background: var(--bg-card); }
+.accordion-icon-box { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.accordion-title { flex: 1; font-family: 'Patrick Hand'; font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.accordion-content { padding: 0 14px 14px; font-family: 'Patrick Hand'; font-size: 13px; line-height: 1.7; color: var(--text-secondary); white-space: pre-line; padding-left: 44px; }
+
+/* Stat */
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: var(--bg-card); border-radius: 16px; padding: 16px; border: 1px solid var(--card-border); box-shadow: var(--card-shadow); text-align: center; }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--color-ink); font-family: 'Amatic SC'; }
+.stat-label { font-size: 11px; color: var(--text-muted); }
+
+/* Feature card */
+.feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.feature-card { padding: 18px; border-radius: 14px; cursor: pointer; transition: all 0.2s; }
+.feature-card:hover { transform: translateY(-3px); }
+.feature-title { font-size: 16px; font-weight: 700; color: var(--color-ink); margin-bottom: 4px; }
+.feature-desc { font-size: 12px; color: var(--text-muted); }
+
+/* Mood */
+.mood-row { display: flex; gap: 8px; }
+.mood-btn { width: 48px; height: 48px; border-radius: 14px; border: 2px solid transparent; background: var(--bg-card); font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.mood-btn.selected { border-color: var(--color-neon-orange); background: var(--color-apricot); }
+
+/* Checklist */
+.checklist-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--divider); font-size: 13px; }
+.checklist-item:last-child { border: none; }
+
+/* Study room seat */
+.seat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.seat { background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; text-align: center; }
+.seat-emoji { font-size: 28px; }
+.seat-name { font-size: 11px; font-weight: 700; color: var(--color-ink); margin-top: 4px; }
+.seat-task { font-size: 10px; color: var(--text-muted); }
+.seat-time { font-size: 10px; color: var(--color-neon-green); font-weight: 700; }
+
+/* Treehole post */
+.post-bubble { border-radius: 16px 16px 16px 4px; padding: 14px; margin-bottom: 10px; position: relative; }
+.post-rant { background: var(--sticky-yellow); }
+.post-success { background: var(--sticky-green); }
+.post-emoji { font-size: 20px; }
+.post-content { font-family: 'Patrick Hand'; font-size: 13px; color: var(--text-primary); margin: 6px 0; }
+.post-actions { display: flex; gap: 12px; font-size: 12px; color: var(--text-muted); }
+
+/* Partner card */
+.partner-card { display: flex; align-items: center; gap: 16px; padding: 18px; border-radius: 14px; background: var(--bg-card); border: 1px solid var(--card-border); margin-bottom: 8px; }
+.partner-emoji { font-size: 36px; }
+.partner-name { font-size: 15px; font-weight: 700; color: var(--color-ink); }
+.partner-goal { font-size: 12px; color: var(--text-muted); }
+.partner-progress { width: 100%; height: 6px; background: var(--divider); border-radius: 3px; margin-top: 6px; }
+.partner-progress-bar { height: 100%; background: var(--color-neon-green); border-radius: 3px; }
+
+/* Settings */
+.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--divider); }
+.setting-row:last-child { border: none; }
+.setting-label { font-family: 'Patrick Hand'; font-size: 14px; color: var(--text-primary); }
+.setting-desc { font-size: 11px; color: var(--text-muted); }
+.theme-colors { display: flex; gap: 6px; flex-wrap: wrap; }
+.theme-swatch { width: 28px; height: 28px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; }
+.theme-swatch.active { border-color: var(--color-ink); }
+.toggle-switch { width: 40px; height: 22px; background: var(--divider); border-radius: 11px; position: relative; cursor: pointer; }
+.toggle-switch.on { background: var(--color-neon-green); }
+.toggle-knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: 0.2s; }
+.toggle-switch.on .toggle-knob { left: 20px; }
+
+/* Profile */
+.profile-header { height: 120px; border-radius: 16px; background: linear-gradient(135deg, #FAD6A5, #FF6B35); position: relative; margin-bottom: -40px; }
+.profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: white; border: 4px solid white; display: flex; align-items: center; justify-content: center; font-size: 40px; box-shadow: var(--card-shadow); position: relative; z-index: 1; margin: 0 auto; }
+
+/* Pixel dog */
+.pixel-dog { position: fixed; bottom: 24px; right: 24px; width: 64px; height: 64px; background: radial-gradient(circle, rgba(255,107,53,0.15) 0%, transparent 70%); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 50; }
+.pixel-dog-inner { font-size: 32px; }
+
+/* Music */
+.music-indicator { position: fixed; bottom: 24px; left: 24px; width: 44px; height: 44px; background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 50; }
+.music-bar { width: 3px; background: var(--color-neon-orange); border-radius: 2px; }
+
+/* Typewriter */
+.typewriter { font-family: 'Amatic SC'; font-size: 36px; font-weight: 700; color: var(--color-ink); letter-spacing: 3px; }
+.typewriter::after { content: '|'; color: var(--color-neon-orange); animation: blink 0.7s infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes breathe { 50% { transform: scale(1.08); } }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Navigation -->
+  <nav class="nav-sidebar">
+    <div class="logo-area">
+      <div class="logo-icon">W</div>
+      <div>
+        <div class="logo-text">whywait</div>
+        <div class="logo-sub">Why Wait?</div>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">核心功能</div>
+      <a class="nav-item active"><span class="icon">📊</span> 仪表盘</a>
+      <a class="nav-item"><span class="icon">🧠</span> 人格测试</a>
+      <a class="nav-item"><span class="icon">📝</span> 任务管理</a>
+      <a class="nav-item"><span class="icon">⏰</span> 专注模式</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">陪伴 & 拆解</div>
+      <a class="nav-item"><span class="icon">✨</span> 灵感拆解 <span class="new-badge">新</span></a>
+      <a class="nav-item"><span class="icon">👥</span> 陪伴社区 <span class="new-badge">新</span></a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">个人</div>
+      <a class="nav-item"><span class="icon">👤</span> 我的</a>
+      <a class="nav-item"><span class="icon">⚙️</span> 设置</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Typewriter -->
+    <div style="margin-bottom: 24px;">
+      <div class="typewriter">whywait</div>
+      <div class="logo-sub" style="margin-top: 4px;">解码拖延人格，重启行动力 ⚡</div>
+    </div>
+
+    <!-- 1. Login + 人机验证 + 邮箱验证 -->
+    <div class="page-section">
+      <div class="section-title">🔐 注册 / 登录 + 人机验证 + 邮箱验证</div>
+      <div class="section-desc">服务端 scrypt 加密 · JSON 文件数据库 · Resend/Nodemailer 发送邮件</div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <!-- 注册表单 -->
+        <div class="login-card" style="margin: 0;">
+          <div style="text-align: center; margin-bottom: 16px;">
+            <div class="logo-icon" style="margin: 0 auto 8px;">W</div>
+            <div class="font-sketch" style="font-size: 24px; font-weight: 700;">whywait</div>
+          </div>
+          <div class="tab-row" style="justify-content: center;">
+            <button class="tab-btn">登录</button>
+            <button class="tab-btn active">注册</button>
+          </div>
+          <input class="input-field" placeholder="用户名（至少2个字符）" value="探索者" />
+          <input class="input-field" placeholder="邮箱" value="3250101945@zju.edu.cn" />
+          <input class="input-field" placeholder="密码（至少4个字符）" type="password" value="••••••" />
+          <input class="input-field" placeholder="确认密码" type="password" value="••••••" />
+
+          <!-- 人机验证 -->
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">🤖 人机验证</div>
+          <div class="captcha-box">
+            <span class="captcha-emoji">🔢</span>
+            <span class="captcha-text">3 + 7 = ?</span>
+            <input class="captcha-input" placeholder="?" value="10" />
+            <button class="captcha-refresh">🔄</button>
+          </div>
+
+          <button class="btn-neon" style="width: 100%;">注册</button>
+          <div style="text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 10px;">
+            注册后需邮箱验证 · 密码用 scrypt 加盐哈希存储
+          </div>
+        </div>
+
+        <!-- 邮箱验证码（演示模式） -->
+        <div class="login-card" style="margin: 0;">
+          <div style="text-align: center; margin-bottom: 16px;">
+            <div style="font-size: 32px; margin-bottom: 8px;">📧</div>
+            <div class="font-sketch" style="font-size: 20px; font-weight: 700;">邮箱验证</div>
+          </div>
+
+          <!-- 演示模式验证码 -->
+          <div class="verify-code-box">
+            <div class="verify-code-label">📧 演示模式 · 验证码已发送到邮箱</div>
+            <div class="verify-code">4826</div>
+          </div>
+
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+            请输入收到的 4 位验证码：
+          </div>
+          <input class="verify-code-input" placeholder="----" value="4826" />
+          <button class="btn-neon" style="width: 100%;">验证</button>
+
+          <div class="divider"></div>
+          <div style="text-align: center;">
+            <button class="btn-ghost">重发验证邮件</button>
+          </div>
+
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 12px; text-align: center;">
+            正式部署配置邮件服务后<br>会发送真实验证邮件到用户邮箱
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 新手引导（OnboardingGuide 高亮遮罩） -->
+    <div class="page-section">
+      <div class="section-title">📖 新手引导 · OnboardingGuide <span class="new-badge">首次登录触发</span></div>
+      <div class="section-desc">SVG mask 镂空遮罩 · 高亮框 + 气泡提示 · 6 步引导</div>
+
+      <div class="guide-overlay">
+        <!-- 高亮的目标区域 -->
+        <div class="guide-highlight">
+          <div style="font-size: 20px; margin-bottom: 8px;">📊 仪表盘</div>
+          <div style="font-size: 12px; color: var(--text-muted);">这里是你的每日总览，记录心情、查看统计、获取 AI 推荐的启动任务</div>
+        </div>
+
+        <!-- 气泡提示 -->
+        <div class="guide-bubble">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--color-neon-orange); display: flex; align-items: center; justify-content: center;">
+              <span style="color: white; font-size: 14px;">✨</span>
+            </div>
+            <h3 class="font-hand" style="font-size: 16px; font-weight: 700; color: var(--color-ink);">仪表盘</h3>
+          </div>
+          <p class="font-hand" style="font-size: 13px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 16px;">
+            这里是你的每日总览，记录心情、查看统计、获取 AI 推荐的启动任务
+          </p>
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <div class="guide-step-dot active"></div>
+              <div class="guide-step-dot"></div>
+              <div class="guide-step-dot"></div>
+              <div class="guide-step-dot"></div>
+              <div class="guide-step-dot"></div>
+              <div class="guide-step-dot"></div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-ghost">跳过</button>
+              <button class="btn-neon" style="font-size: 12px;">下一步 ›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 12px;">
+        6 步引导：仪表盘 → 人格测试 → 任务管理 → 专注模式 → 数据诊断 → 像素小狗<br>
+        最后一步显示"开始使用！"关闭引导，用 localStorage 记录已完成
+      </div>
+    </div>
+
+    <!-- 3. 使用指南页面 (/guide) -->
+    <div class="page-section">
+      <div class="section-title">📚 使用指南页面 /guide <span class="new-badge">新页面</span></div>
+      <div class="section-desc">10 步手风琴展开式指南 · 可随时从设置页重新触发</div>
+
+      <!-- 手风琴列表 -->
+      <div>
+        <div class="accordion-item expanded">
+          <div class="accordion-header">
+            <div class="accordion-icon-box" style="background: var(--color-neon-orange);"><span style="color: white; font-size: 14px;">✨</span></div>
+            <span class="accordion-title">欢迎使用 WhyWait</span>
+            <span style="color: var(--text-muted);">▼</span>
+          </div>
+          <div class="accordion-content">WhyWait 是一款专门为"拖延症患者"设计的效率工具。
+我们相信：拖延不是时间管理问题，是情绪管理问题。
+所以我们不做"逼你干活"的工具，我们帮你"降低启动的阻力"。
+
+✨ 核心创新：灵感拆解 —— AI 帮你把大任务拆成可执行的小步骤
+🤝 陪伴社区 —— 自习室、树洞、学伴，你不是一个人在战斗</div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header">
+            <div class="accordion-icon-box" style="background: var(--color-apricot);"><span style="font-size: 14px;">🛡️</span></div>
+            <span class="accordion-title">注册与登录</span>
+            <span style="color: var(--text-muted);">▶</span>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header">
+            <div class="accordion-icon-box" style="background: var(--color-apricot);"><span style="font-size: 14px;">🧠</span></div>
+            <span class="accordion-title">第一步：人格测试</span>
+            <span style="color: var(--text-muted);">▶</span>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header">
+            <div class="accordion-icon-box" style="background: var(--color-apricot);"><span style="font-size: 14px;">✨</span></div>
+            <span class="accordion-title">灵感拆解（核心功能）</span>
+            <span style="color: var(--text-muted);">▶</span>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header">
+            <div class="accordion-icon-box" style="background: var(--color-apricot);"><span style="font-size: 14px;">📝</span></div>
+            <span class="accordion-title">任务管理</span>
+            <span style="color: var(--text-muted);">▶</span>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header">
+            <div class="accordion-icon-box" style="background: var(--color-apricot);"><span style="font-size: 14px;">⏰</span></div>
+            <span class="accordion-title">专注模式（番茄钟）</span>
+            <span style="color: var(--text-muted);">▶</span>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header">
+            <div class="accordion-icon-box" style="background: var(--color-apricot);"><span style="font-size: 14px;">👥</span></div>
+            <span class="accordion-title">陪伴社区</span>
+            <span style="color: var(--text-muted);">▶</span>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header">
+            <div class="accordion-icon-box" style="background: var(--color-apricot);"><span style="font-size: 14px;">🏆</span></div>
+            <span class="accordion-title">成就系统</span>
+            <span style="color: var(--text-muted);">▶</span>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header">
+            <div class="accordion-icon-box" style="background: var(--color-apricot);"><span style="font-size: 14px;">👤</span></div>
+            <span class="accordion-title">我的</span>
+            <span style="color: var(--text-muted);">▶</span>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header">
+            <div class="accordion-icon-box" style="background: var(--color-apricot);"><span style="font-size: 14px;">💡</span></div>
+            <span class="accordion-title">使用小技巧</span>
+            <span style="color: var(--text-muted);">▶</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 灵感拆解 -->
+    <div class="page-section">
+      <div class="section-title">✨ 灵感拆解 /decode <span class="new-badge">核心功能</span></div>
+      <div class="section-desc">输入任务 + 上传文件/图片 → AI 拆解为 5-7 个子任务 + 阻力评分</div>
+
+      <div class="tab-row">
+        <button class="tab-btn active">新建拆解</button>
+        <button class="tab-btn">历史记录</button>
+      </div>
+
+      <textarea style="width: 100%; padding: 14px; border-radius: 12px; border: 2px dashed var(--card-border); background: var(--bg-primary); font-family: 'Patrick Hand'; font-size: 15px; min-height: 60px; outline: none; resize: vertical;" placeholder="描述你的任务...例如：写微积分二重积分作业"></textarea>
+
+      <div style="display: flex; gap: 8px; margin-top: 12px; align-items: center;">
+        <button class="btn-ghost">📎 上传文件/图片</button>
+        <button class="btn-neon">开始拆解</button>
+      </div>
+
+      <!-- 拆解结果预览 -->
+      <div style="margin-top: 16px;">
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">AI 拆解结果：</div>
+        <div class="sticky-note" style="background: var(--sticky-yellow); transform: rotate(-0.5deg); margin-bottom: 8px;">
+          <div class="pushpin"></div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <span style="font-weight: 700; font-size: 13px;">1. 回顾二重积分定义</span>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">📖 翻看教材 P280-285，理解几何意义</div>
+            </div>
+            <span class="tag tag-mint">阻力 2/10</span>
+          </div>
+        </div>
+        <div class="sticky-note" style="background: var(--sticky-green); transform: rotate(0.8deg); margin-bottom: 8px;">
+          <div class="pushpin"></div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <span style="font-weight: 700; font-size: 13px;">2. 做 3 道基础计算题</span>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">✏️ 先做例题，熟悉公式</div>
+            </div>
+            <span class="tag tag-mint">阻力 3/10</span>
+          </div>
+        </div>
+        <div class="sticky-note" style="background: var(--sticky-pink); transform: rotate(-1deg);">
+          <div class="pushpin"></div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <span style="font-weight: 700; font-size: 13px;">3. 完成 5 遀作业题</span>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">📝 从最简单的开始，先做第 1 题</div>
+            </div>
+            <span class="tag">阻力 6/10</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. 陪伴社区 -->
+    <div class="page-section">
+      <div class="section-title">👥 陪伴社区 /community</div>
+      <div class="section-desc">你不是一个人在战斗</div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div class="sticky-note" style="background: var(--sticky-green); transform: rotate(-1.5deg); display: flex; align-items: center; gap: 16px; cursor: pointer;">
+          <div class="pushpin"></div>
+          <div style="font-size: 24px;">📚</div>
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 700; font-size: 15px;">自习室</span><span class="tag">实时陪伴</span></div>
+            <div style="font-size: 12px; color: var(--text-muted);">一起专注，互相陪伴的线上自习空间</div>
+          </div><span style="color: var(--text-muted); font-size: 20px;">›</span>
+        </div>
+        <div class="sticky-note" style="background: var(--sticky-yellow); transform: rotate(1deg); display: flex; align-items: center; gap: 16px; cursor: pointer;">
+          <div class="pushpin"></div>
+          <div style="font-size: 24px;">💬</div>
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 700; font-size: 15px;">树洞</span><span class="tag">匿名聊天</span></div>
+            <div style="font-size: 12px; color: var(--text-muted);">匿名倾诉，说说话，释放你的压力</div>
+          </div><span style="color: var(--text-muted); font-size: 20px;">›</span>
+        </div>
+        <div class="sticky-note" style="background: var(--sticky-pink); transform: rotate(-0.5deg); display: flex; align-items: center; gap: 16px; cursor: pointer;">
+          <div class="pushpin"></div>
+          <div style="font-size: 24px;">🐱</div>
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 700; font-size: 15px;">学伴</span><span class="tag">互助匹配</span></div>
+            <div style="font-size: 12px; color: var(--text-muted);">匹配学习伙伴，互相监督一起进步</div>
+          </div><span style="color: var(--text-muted); font-size: 20px;">›</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. 自习室 -->
+    <div class="page-section">
+      <div class="section-title">🏫 自习室 /studyroom</div>
+      <div class="section-desc">20 个座位 · 集体番茄钟 · 预设鼓励语 · 庆祝动画</div>
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <div style="background: var(--color-neon-orange); color: white; padding: 6px 14px; border-radius: 10px; font-weight: 700; font-size: 13px;">考研自习室</div>
+        <span style="font-size: 12px; color: var(--text-muted);">当前 5 人在学</span>
+      </div>
+      <div class="seat-grid">
+        <div class="seat"><div class="seat-emoji">🐼</div><div class="seat-name">熊猫同学</div><div class="seat-task">背单词50个</div><div class="seat-time">⏱ 15min</div></div>
+        <div class="seat"><div class="seat-emoji">🦊</div><div class="seat-name">狐狸同学</div><div class="seat-task">微积分作业</div><div class="seat-time">⏱ 8min</div></div>
+        <div class="seat"><div class="seat-emoji">🐱</div><div class="seat-name">猫咪同学</div><div class="seat-task">论文初稿</div><div class="seat-time">⏱ 22min</div></div>
+        <div class="seat"><div class="seat-emoji">🐰</div><div class="seat-name">兔子同学</div><div class="seat-task">代码debug</div><div class="seat-time">⏱ 5min</div></div>
+        <div class="seat" style="border: 2px solid var(--color-neon-orange);"><div class="seat-emoji">😊</div><div class="seat-name" style="color: var(--color-neon-orange);">你</div><div class="seat-task">微积分作业</div><div class="seat-time">⏱ 12min</div></div>
+        <div class="seat" style="opacity: 0.3;"><div class="seat-emoji">🪑</div><div class="seat-name">空位</div></div>
+        <div class="seat" style="opacity: 0.3;"><div class="seat-emoji">🪑</div><div class="seat-name">空位</div></div>
+        <div class="seat" style="opacity: 0.3;"><div class="seat-emoji">🪑</div><div class="seat-name">空位</div></div>
+      </div>
+    </div>
+
+    <!-- 7. 树洞 -->
+    <div class="page-section">
+      <div class="section-title">💬 树洞 /treehole</div>
+      <div class="section-desc">匿名发帖 · 48 小时过期 · 每日限 3 帖 · 敏感词过滤</div>
+      <div class="tab-row" style="margin-bottom: 12px;">
+        <button class="tab-btn active">全部</button>
+        <button class="tab-btn">只看吐槽</button>
+        <button class="tab-btn">只看成功</button>
+      </div>
+      <div class="post-bubble post-rant">
+        <div style="display: flex; align-items: center; gap: 6px;"><span class="post-emoji">🐼</span><span style="font-size: 11px; color: var(--text-muted);">匿名 · 10分钟前</span></div>
+        <div class="post-content">微积分作业太难了啊啊啊，又拖了一天，明天就要交了怎么办😭</div>
+        <div class="post-actions">❤️ 12 · 🤝 5</div>
+      </div>
+      <div class="post-bubble post-success">
+        <div style="display: flex; align-items: center; gap: 6px;"><span class="post-emoji">🦊</span><span style="font-size: 11px; color: var(--text-muted);">匿名 · 30分钟前</span></div>
+        <div class="post-content">今天提前完成了英语阅读！虽然只是一小步，但终于不再是「明天再说」了 ✨</div>
+        <div class="post-actions">❤️ 28 · 🤝 10</div>
+      </div>
+      <div class="post-bubble post-rant">
+        <div style="display: flex; align-items: center; gap: 6px;"><span class="post-emoji">🐱</span><span style="font-size: 11px; color: var(--text-muted);">匿名 · 1小时前</span></div>
+        <div class="post-content">论文写了三天还没写完引言，我是不是不适合读研...</div>
+        <div class="post-actions">❤️ 15 · 🤝 8</div>
+      </div>
+    </div>
+
+    <!-- 8. 学伴 -->
+    <div class="page-section">
+      <div class="section-title">🐱 学伴匹配 /partner</div>
+      <div class="section-desc">每日匹配 · 任务进度同步 · 击掌互动 · 真人/虚拟两种模式</div>
+      <div class="partner-card">
+        <div class="partner-emoji">🦊</div>
+        <div style="flex: 1;">
+          <div class="partner-name">狐狸同学 <span class="tag tag-mint">今日学伴</span></div>
+          <div class="partner-goal">目标：考研上岸 · #数学 #英语</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">已完成 7/10 项任务</div>
+          <div class="partner-progress"><div class="partner-progress-bar" style="width: 70%;"></div></div>
+        </div>
+        <button class="btn-mint" style="font-size: 12px;">击掌 👋</button>
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
+        真人匹配：连接同一部署实例 · 超时 1 分钟后转虚拟陪伴<br>
+        完成率 >80% 次日优先匹配 · 连续 3 天 <30% 暂停 3 天
+      </div>
+    </div>
+
+    <!-- 9. 设置 -->
+    <div class="page-section">
+      <div class="section-title">⚙️ 设置 /settings</div>
+      <div class="section-desc">外观 · 音效 · 专注 · 提醒 · 账号 · 帮助</div>
+
+      <!-- 外观 -->
+      <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--color-ink);">🎨 外观设置</div>
+      <div class="setting-row">
+        <div><div class="setting-label">主题色（10种）</div><div class="setting-desc">点击切换全局配色</div></div>
+        <div class="theme-colors">
+          <div class="theme-swatch active" style="background: #FAD6A5;"></div>
+          <div class="theme-swatch" style="background: #2B3A67;"></div>
+          <div class="theme-swatch" style="background: #4ECDC4;"></div>
+          <div class="theme-swatch" style="background: #FFB7C5;"></div>
+          <div class="theme-swatch" style="background: #B19CD9;"></div>
+          <div class="theme-swatch" style="background: #FF6B35;"></div>
+          <div class="theme-swatch" style="background: #0D6E8E;"></div>
+          <div class="theme-swatch" style="background: #2D5F3F;"></div>
+          <div class="theme-swatch" style="background: #1A1A2E;"></div>
+          <div class="theme-swatch" style="background: #FFFFFF;"></div>
+        </div>
+      </div>
+      <div class="setting-row"><div><div class="setting-label">字体大小</div><div class="setting-desc">小 / 中 / 大 / 特大</div></div><div style="display: flex; gap: 4px;"><button class="tab-btn">小</button><button class="tab-btn active">中</button><button class="tab-btn">大</button><button class="tab-btn">特大</button></div></div>
+      <div class="setting-row"><div><div class="setting-label">夜间模式</div><div class="setting-desc">22:00 后自动切换深色主题</div></div><div class="toggle-switch on"><div class="toggle-knob"></div></div></div>
+
+      <div class="divider"></div>
+
+      <!-- 音效 -->
+      <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--color-ink);">🔊 音效与音乐</div>
+      <div class="setting-row"><div><div class="setting-label">音效开关</div><div class="setting-desc">8-bit 像素风点击/完成/删除音效</div></div><div class="toggle-switch on"><div class="toggle-knob"></div></div></div>
+      <div class="setting-row"><div><div class="setting-label">背景音乐</div><div class="setting-desc">Kamasutra · 无限循环</div></div><div class="toggle-switch on"><div class="toggle-knob"></div></div></div>
+
+      <div class="divider"></div>
+
+      <!-- 专注 -->
+      <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--color-ink);">⏰ 专注设置</div>
+      <div class="setting-row"><div><div class="setting-label">熄屏宽容时间</div><div class="setting-desc">10~300 秒，默认 60 秒</div></div><span style="font-family: 'Patrick Hand'; font-weight: 700;">60秒</span></div>
+      <div class="setting-row"><div><div class="setting-label">熄屏后自动继续</div><div class="setting-desc">无需确认直接继续计时</div></div><div class="toggle-switch"><div class="toggle-knob"></div></div></div>
+      <div class="setting-row"><div><div class="setting-label">默认专注时长</div><div class="setting-desc">番茄钟默认 25 分钟</div></div><span style="font-family: 'Patrick Hand'; font-weight: 700;">25min</span></div>
+
+      <div class="divider"></div>
+
+      <!-- 提醒 -->
+      <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--color-ink);">🔔 提醒设置</div>
+      <div class="setting-row"><div><div class="setting-label">起床提醒</div><div class="setting-desc">默认 07:30 · 全屏闹钟 + 浏览器通知</div></div><div class="toggle-switch on"><div class="toggle-knob"></div></div></div>
+      <div class="setting-row"><div><div class="setting-label">睡眠提醒</div><div class="setting-desc">默认 23:00 · 提前 15 分钟提醒</div></div><div class="toggle-switch on"><div class="toggle-knob"></div></div></div>
+
+      <div class="divider"></div>
+
+      <!-- 账号 -->
+      <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--color-ink);">👤 账号与安全</div>
+      <div class="setting-row"><div class="setting-label">修改密码</div><span style="color: var(--text-muted);">›</span></div>
+      <div class="setting-row"><div class="setting-label">注销账号</div><span style="color: #EF4444;">删除所有数据 ›</span></div>
+      <div class="setting-row"><div class="setting-label">退出登录</div><span style="color: var(--text-muted);">›</span></div>
+
+      <div class="divider"></div>
+
+      <!-- 帮助 -->
+      <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--color-ink);">❓ 帮助与反馈</div>
+      <div class="setting-row"><div class="setting-label">新手指南</div><span style="color: var(--text-muted);">重新触发 ›</span></div>
+      <div class="setting-row"><div class="setting-label">意见反馈</div><span style="color: var(--text-muted);">›</span></div>
+      <div class="setting-row"><div class="setting-label">关于 WhyWait</div><span style="color: var(--text-muted);">›</span></div>
+    </div>
+
+    <!-- 10. 我的页面 -->
+    <div class="page-section" style="padding: 0; overflow: hidden;">
+      <div class="profile-header"></div>
+      <div style="padding: 0 24px 24px;">
+        <div style="display: flex; justify-content: center; margin-bottom: 12px;">
+          <div class="profile-avatar">🐼</div>
+        </div>
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 18px; font-weight: 700; color: var(--color-ink);">探索者</div>
+          <div style="font-size: 12px; color: var(--text-muted);">别等了，开始吧 ⚡</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">📍 杭州 · #考研 #夜猫子</div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px;">
+          <div style="text-align: center; padding: 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--card-border);"><div style="font-size: 22px; font-weight: 700; color: var(--color-ink); font-family: 'Amatic SC';">23</div><div style="font-size: 10px; color: var(--text-muted);">累计完成</div></div>
+          <div style="text-align: center; padding: 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--card-border);"><div style="font-size: 22px; font-weight: 700; color: var(--color-ink); font-family: 'Amatic SC';">5.2h</div><div style="font-size: 10px; color: var(--text-muted);">累计专注</div></div>
+          <div style="text-align: center; padding: 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--card-border);"><div style="font-size: 22px; font-weight: 700; color: var(--color-ink); font-family: 'Amatic SC';">7</div><div style="font-size: 10px; color: var(--text-muted);">连续打卡</div></div>
+        </div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--color-ink); margin-bottom: 8px;">📜 动态时间线</div>
+        <div class="checklist-item"><span>✅</span> 完成任务「微积分作业第三题」· 2小时前</div>
+        <div class="checklist-item"><span>⏱️</span> 专注 25 分钟 · 3小时前</div>
+        <div class="checklist-item"><span>🏆</span> 达成成就「连续7天打卡」· 昨天</div>
+        <div class="checklist-item"><span>💬</span> 在树洞发布了一条成功帖 · 2天前</div>
+      </div>
+    </div>
+
+    <!-- 11. 技术架构 -->
+    <div class="page-section">
+      <div class="section-title">🏗️ 技术架构</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+        <div class="checklist-item"><span>✓</span> Next.js 14 App Router + TypeScript</div>
+        <div class="checklist-item"><span>✓</span> Tailwind CSS + Framer Motion</div>
+        <div class="checklist-item"><span>✓</span> Web Worker 熄屏后台计时</div>
+        <div class="checklist-item"><span>✓</span> scrypt 密码加密（服务端）</div>
+        <div class="checklist-item"><span>✓</span> JSON 文件数据库（whywait-db.json）</div>
+        <div class="checklist-item"><span>✓</span> Resend / Nodemailer 邮件发送</div>
+        <div class="checklist-item"><span>✓</span> 人机验证（数学题防机器人）</div>
+        <div class="checklist-item"><span>✓</span> SVG mask 镂空遮罩新手引导</div>
+        <div class="checklist-item"><span>✓</span> GitHub Actions CI/CD</div>
+        <div class="checklist-item"><span>✓</span> 8-bit 音效 + Kamasutra BGM</div>
+        <div class="checklist-item"><span>✓</span> Page Visibility API + 时间戳兜底</div>
+        <div class="checklist-item"><span>✓</span> Notification API 浏览器通知</div>
+      </div>
+    </div>
+
+    <!-- 12. 提交历史 -->
+    <div class="page-section">
+      <div class="section-title">📝 提交历史（8 commits）</div>
+      <div class="checklist-item"><span style="color: #EF4444;">●</span> <b>Balloon-balloon</b> · failure · 2天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-orange);">●</span> <b>Balloon-balloon</b> · 修改了1 2 4，3是否修改成功待定 · 2天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-orange);">●</span> <b>Balloon-balloon</b> · 修改 · 2天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-green);">●</span> <b>Balloon-balloon</b> · 灵感拆解页面、陪伴社区、邮箱验证完善、导航重构、字体大小修复 · 3天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-green);">●</span> <b>Liuzh7225</b> · enhance focus mode, file upload, studyroom, guide · 4天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-orange);">●</span> <b>iridescent2026</b> · complete whywait app with all features · 4天前</div>
+      <div class="checklist-item"><span style="color: var(--color-neon-orange);">●</span> <b>iridescent2026</b> · add GitHub Actions deploy workflow · 5天前</div>
+      <div class="checklist-item"><span style="color: var(--text-muted);">●</span> <b>iridescent2026</b> · complete procrastination decoder app · 6天前</div>
+    </div>
+  </main>
+</div>
+
+<div class="pixel-dog"><div class="pixel-dog-inner">🐕</div></div>
+<div class="music-indicator"><div style="display: flex; gap: 2px; align-items: center; height: 16px;"><div class="music-bar" style="height: 6px;"></div><div class="music-bar" style="height: 10px;"></div><div class="music-bar" style="height: 14px;"></div><div class="music-bar" style="height: 8px;"></div></div></div>
+
+</body>
+</html>
