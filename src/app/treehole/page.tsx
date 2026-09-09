@@ -2,9 +2,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageTransition, StaggerContainer, FadeInItem } from "@/components/Animations";
-import { Heart, Handshake, Send, Filter, Clock, Sparkles } from "lucide-react";
+import { Heart, Handshake, Send, Filter, Clock, MessageCircle, X, Eye, EyeOff, User as UserIcon } from "lucide-react";
 import { playClickSound } from "@/lib/sound";
 import { useToast } from "@/components/Toast";
+import { getCurrentUser } from "@/lib/auth";
 
 type PostType = "rant" | "success";
 
@@ -18,13 +19,22 @@ interface Post {
   createdAt: number;
   resonated?: boolean;
   patted?: boolean;
+  anonymous: boolean;
+  authorName?: string;
+  authorId?: string;
+}
+
+interface ChatMessage {
+  id: string;
+  from: string;
+  to: string;
+  content: string;
+  createdAt: number;
+  fromName: string;
+  toName: string;
 }
 
 const EMOJIS = ["🐼", "🦊", "🐱", "🐶", "🐰", "🦉", "🐸", "🐧", "🦝", "🐙", "🦄", "🐝"];
-
-const ENCOURAGE_WORDS = ["加油！你并不孤独", "每一步都算数", "我也在拖延，一起努力", "完成了就很棒", "慢慢来比较快", "你比昨天强了"];
-
-// 敏感词过滤（基础词库）
 const SENSITIVE_WORDS = ["傻逼", "滚", "去死", "杀", "毒品"];
 
 function filterContent(text: string): string {
@@ -48,6 +58,11 @@ function formatTime(ts: number): string {
   return "刚刚";
 }
 
+const DM_STORAGE_KEY = "pd-dm-messages";
+const POSTS_KEY = "pd-treehole-posts";
+const POSTS_VERSION_KEY = "pd-treehole-posts-version";
+const POSTS_VERSION = "2";
+
 export default function TreeHolePage() {
   const { showToast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -55,38 +70,37 @@ export default function TreeHolePage() {
   const [showCompose, setShowCompose] = useState(false);
   const [composeType, setComposeType] = useState<PostType>("rant");
   const [composeContent, setComposeContent] = useState("");
+  const [composeAnonymous, setComposeAnonymous] = useState(true);
   const [todayPostCount, setTodayPostCount] = useState(0);
+  const [chatTarget, setChatTarget] = useState<{ id: string; name: string; emoji: string } | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
 
   // 加载帖子 + 定时清理过期帖
   useEffect(() => {
     const loadAndClean = () => {
-      const raw = localStorage.getItem("pd-treehole-posts");
+      // 版本检查：清除旧版本数据
+      const version = localStorage.getItem(POSTS_VERSION_KEY);
+      if (version !== POSTS_VERSION) {
+        localStorage.removeItem(POSTS_KEY);
+        localStorage.setItem(POSTS_VERSION_KEY, POSTS_VERSION);
+      }
+
+      const raw = localStorage.getItem(POSTS_KEY);
       let allPosts: Post[] = [];
       if (raw) {
-        allPosts = JSON.parse(raw);
-        // 清理 48h 过期帖
+        try {
+          allPosts = JSON.parse(raw);
+          if (!Array.isArray(allPosts)) allPosts = [];
+        } catch {
+          allPosts = [];
+        }
         const cutoff = Date.now() - 48 * 3600 * 1000;
         allPosts = allPosts.filter((p) => p.createdAt > cutoff);
-        localStorage.setItem("pd-treehole-posts", JSON.stringify(allPosts));
+        localStorage.setItem(POSTS_KEY, JSON.stringify(allPosts));
       }
-
-      // 如果没有帖子，生成一些模拟数据
-      if (allPosts.length === 0) {
-        const mockPosts: Post[] = [
-          { id: "m1", emoji: "🐼", type: "rant", content: "微积分作业拖了一周了，翻开课本就开始刷手机😭", resonances: 12, pats: 8, createdAt: Date.now() - 3600000 * 2 },
-          { id: "m2", emoji: "🦊", type: "success", content: "今天用5分钟启动法写了500字论文！虽然不多但是开始了！", resonances: 23, pats: 15, createdAt: Date.now() - 3600000 * 5 },
-          { id: "m3", emoji: "🐱", type: "rant", content: "明早要交报告，我现在还在看猫视频...救命", resonances: 7, pats: 5, createdAt: Date.now() - 1800000 },
-          { id: "m4", emoji: "🐰", type: "success", content: "连续3天完成每日任务了！拖延解码器真的有用✨", resonances: 31, pats: 20, createdAt: Date.now() - 3600000 * 8 },
-          { id: "m5", emoji: "🦉", type: "rant", content: "知道自己拖延但就是不想动，有没有人懂这种感觉", resonances: 19, pats: 12, createdAt: Date.now() - 3600000 * 3 },
-        ];
-        allPosts = mockPosts;
-        localStorage.setItem("pd-treehole-posts", JSON.stringify(allPosts));
-      }
-
       setPosts(allPosts.sort((a, b) => b.createdAt - a.createdAt));
 
-      // 统计今日发帖数
-      const todayStart = new Date().setHours(0, 0, 0, 0);
       const todayKey = `pd-treehole-today-${new Date().toDateString()}`;
       const todayCount = parseInt(localStorage.getItem(todayKey) || "0");
       setTodayPostCount(todayCount);
@@ -96,6 +110,22 @@ export default function TreeHolePage() {
     const interval = setInterval(loadAndClean, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // 加载私聊消息
+  useEffect(() => {
+    if (!chatTarget) return;
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    const raw = localStorage.getItem(DM_STORAGE_KEY);
+    let allMsgs: ChatMessage[] = [];
+    if (raw) allMsgs = JSON.parse(raw);
+    const myMsgs = allMsgs.filter(
+      (m) =>
+        (m.from === currentUser.id && m.to === chatTarget.id) ||
+        (m.to === currentUser.id && m.from === chatTarget.id)
+    );
+    setChatMessages(myMsgs.sort((a, b) => a.createdAt - b.createdAt));
+  }, [chatTarget]);
 
   const filteredPosts = useMemo(() => {
     if (filter === "all") return posts;
@@ -112,6 +142,7 @@ export default function TreeHolePage() {
       return;
     }
 
+    const currentUser = getCurrentUser();
     const newPost: Post = {
       id: Date.now().toString(),
       emoji: randomEmoji(),
@@ -120,11 +151,14 @@ export default function TreeHolePage() {
       resonances: 0,
       pats: 0,
       createdAt: Date.now(),
+      anonymous: composeAnonymous,
+      authorName: composeAnonymous ? undefined : currentUser?.username,
+      authorId: composeAnonymous ? undefined : currentUser?.id,
     };
 
     const updated = [newPost, ...posts];
     setPosts(updated);
-    localStorage.setItem("pd-treehole-posts", JSON.stringify(updated));
+    localStorage.setItem(POSTS_KEY, JSON.stringify(updated));
 
     const todayKey = `pd-treehole-today-${new Date().toDateString()}`;
     const newCount = todayPostCount + 1;
@@ -149,7 +183,7 @@ export default function TreeHolePage() {
       return p;
     });
     setPosts(updated);
-    localStorage.setItem("pd-treehole-posts", JSON.stringify(updated));
+    localStorage.setItem(POSTS_KEY, JSON.stringify(updated));
     playClickSound();
   };
 
@@ -165,7 +199,50 @@ export default function TreeHolePage() {
       return p;
     });
     setPosts(updated);
-    localStorage.setItem("pd-treehole-posts", JSON.stringify(updated));
+    localStorage.setItem(POSTS_KEY, JSON.stringify(updated));
+    playClickSound();
+  };
+
+  const handleStartChat = (post: Post) => {
+    if (post.anonymous) {
+      showToast("匿名帖子无法发起私聊", "info");
+      return;
+    }
+    if (!post.authorId || !post.authorName) {
+      showToast("无法获取作者信息", "warning");
+      return;
+    }
+    const currentUser = getCurrentUser();
+    if (currentUser?.id === post.authorId) {
+      showToast("不能给自己发私信", "info");
+      return;
+    }
+    setChatTarget({ id: post.authorId, name: post.authorName, emoji: post.emoji });
+    playClickSound();
+  };
+
+  const handleSendChat = () => {
+    if (!chatInput.trim() || !chatTarget) return;
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+      showToast("请先登录", "warning");
+      return;
+    }
+    const newMsg: ChatMessage = {
+      id: Date.now().toString(),
+      from: currentUser.id,
+      to: chatTarget.id,
+      content: chatInput.trim(),
+      createdAt: Date.now(),
+      fromName: currentUser.username,
+      toName: chatTarget.name,
+    };
+    const raw = localStorage.getItem(DM_STORAGE_KEY);
+    const allMsgs: ChatMessage[] = raw ? JSON.parse(raw) : [];
+    allMsgs.push(newMsg);
+    localStorage.setItem(DM_STORAGE_KEY, JSON.stringify(allMsgs));
+    setChatMessages([...chatMessages, newMsg]);
+    setChatInput("");
     playClickSound();
   };
 
@@ -178,21 +255,21 @@ export default function TreeHolePage() {
             TREE HOLE
           </h1>
           <p className="font-hand text-sm" style={{ color: "var(--text-muted)" }}>
-            🌳 匿名树洞 · 48小时后消失 · 无社交压力
+            🌳 树洞 · 48小时后消失 · 可匿名可实名
           </p>
         </div>
 
         {/* 发帖按钮 */}
         <div className="flex gap-2">
           <button
-            onClick={() => { setShowCompose(true); setComposeType("rant"); }}
+            onClick={() => { setShowCompose(true); setComposeType("rant"); setComposeAnonymous(true); }}
             className="flex-1 py-2.5 rounded-xl text-sm font-hand font-bold transition-all hover:scale-[1.02]"
             style={{ background: "var(--sticky-yellow)", color: "var(--color-ink)" }}
           >
             😤 吐槽一下
           </button>
           <button
-            onClick={() => { setShowCompose(true); setComposeType("success"); }}
+            onClick={() => { setShowCompose(true); setComposeType("success"); setComposeAnonymous(true); }}
             className="flex-1 py-2.5 rounded-xl text-sm font-hand font-bold transition-all hover:scale-[1.02]"
             style={{ background: "var(--sticky-green)", color: "var(--color-ink)" }}
           >
@@ -263,9 +340,18 @@ export default function TreeHolePage() {
                   <span className="text-xs font-hand" style={{ color: "var(--text-muted)" }}>
                     {composeContent.length}/200
                   </span>
-                  <span className="text-xs font-hand" style={{ color: "var(--text-muted)" }}>
-                    匿名发布 · 系统随机分配 emoji 代号
-                  </span>
+                  {/* 匿名/实名切换 */}
+                  <button
+                    onClick={() => { setComposeAnonymous(!composeAnonymous); playClickSound(); }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-hand font-bold transition-all"
+                    style={{
+                      background: composeAnonymous ? "rgba(43,58,103,0.06)" : "var(--color-neon-orange)",
+                      color: composeAnonymous ? "var(--text-muted)" : "#fff",
+                    }}
+                  >
+                    {composeAnonymous ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    {composeAnonymous ? "匿名发布" : "实名发布"}
+                  </button>
                 </div>
                 <div className="flex gap-2 mt-4">
                   <button
@@ -313,8 +399,32 @@ export default function TreeHolePage() {
                   />
 
                   <div className="flex items-start gap-3 mb-2">
-                    <span className="text-2xl">{post.emoji}</span>
+                    {/* 头像 - 可点击私聊 */}
+                    <button
+                      onClick={() => handleStartChat(post)}
+                      className="text-2xl transition-transform hover:scale-125 cursor-pointer"
+                      title={post.anonymous ? "匿名用户无法私聊" : `点击私聊 ${post.authorName}`}
+                    >
+                      {post.emoji}
+                    </button>
                     <div className="flex-1">
+                      {/* 作者信息 */}
+                      <div className="flex items-center gap-1.5 mb-1">
+                        {post.anonymous ? (
+                          <span className="text-[10px] font-hand" style={{ color: "var(--text-muted)" }}>
+                            匿名{post.emoji}用户
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-hand font-bold flex items-center gap-1" style={{ color: "var(--color-ink)" }}>
+                            <UserIcon className="w-2.5 h-2.5" /> {post.authorName}
+                          </span>
+                        )}
+                        {!post.anonymous && (
+                          <span className="text-[9px] font-hand px-1.5 py-0.5 rounded" style={{ background: "rgba(255,107,53,0.15)", color: "var(--color-neon-orange)" }}>
+                            可私聊
+                          </span>
+                        )}
+                      </div>
                       <p className="font-hand text-sm leading-relaxed" style={{ color: "var(--color-ink)" }}>
                         {post.content}
                       </p>
@@ -322,9 +432,20 @@ export default function TreeHolePage() {
                   </div>
 
                   <div className="flex items-center justify-between mt-3">
-                    <span className="text-[10px] font-hand flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
-                      <Clock className="w-3 h-3" /> {formatTime(post.createdAt)} · 48h后消失
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-hand flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+                        <Clock className="w-3 h-3" /> {formatTime(post.createdAt)} · 48h后消失
+                      </span>
+                      {!post.anonymous && (
+                        <button
+                          onClick={() => handleStartChat(post)}
+                          className="text-[10px] font-hand flex items-center gap-0.5 transition-all hover:scale-110"
+                          style={{ color: "var(--color-neon-orange)" }}
+                        >
+                          <MessageCircle className="w-3 h-3" /> 私聊
+                        </button>
+                      )}
+                    </div>
                     <div className="flex gap-3">
                       <button
                         onClick={() => handleResonate(post.id)}
@@ -351,8 +472,96 @@ export default function TreeHolePage() {
         </StaggerContainer>
 
         <p className="text-center text-[10px] font-hand py-4" style={{ color: "var(--text-muted)" }}>
-          🌳 树洞帖仅保留48小时 · 每日限发3帖 · 全匿名无社交压力
+          🌳 树洞帖仅保留48小时 · 每日限发3帖 · 可选匿名或实名 · 实名帖子可私聊
         </p>
+
+        {/* 私聊弹窗 */}
+        <AnimatePresence>
+          {chatTarget && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[180] flex items-end md:items-center justify-center p-4"
+              style={{ background: "rgba(0,0,0,0.5)" }}
+              onClick={() => setChatTarget(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 50 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 50 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md rounded-2xl flex flex-col"
+                style={{ background: "var(--bg-primary)", maxHeight: "70vh" }}
+              >
+                {/* 聊天头部 */}
+                <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: "var(--divider)" }}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{chatTarget.emoji}</span>
+                    <span className="font-hand text-sm font-bold" style={{ color: "var(--color-ink)" }}>
+                      {chatTarget.name}
+                    </span>
+                  </div>
+                  <button onClick={() => setChatTarget(null)} className="p-1 rounded-lg hover:scale-110 transition-all">
+                    <X className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                  </button>
+                </div>
+
+                {/* 消息列表 */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ minHeight: "200px" }}>
+                  {chatMessages.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="text-3xl mb-2">{chatTarget.emoji}</div>
+                      <p className="font-hand text-xs" style={{ color: "var(--text-muted)" }}>
+                        还没有消息，说点什么吧
+                      </p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg) => {
+                      const isMe = msg.from === getCurrentUser()?.id;
+                      return (
+                        <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                          <div
+                            className="max-w-[75%] px-3 py-2 rounded-2xl font-hand text-sm"
+                            style={{
+                              background: isMe ? "var(--color-neon-orange)" : "rgba(43,58,103,0.08)",
+                              color: isMe ? "#fff" : "var(--color-ink)",
+                            }}
+                          >
+                            {msg.content}
+                            <div className="text-[8px] mt-0.5 opacity-60">
+                              {new Date(msg.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* 输入框 */}
+                <div className="p-3 border-t flex gap-2" style={{ borderColor: "var(--divider)" }}>
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSendChat(); }}
+                    placeholder="输入消息..."
+                    className="flex-1 px-3 py-2 rounded-xl text-sm font-hand focus:outline-none"
+                    style={{ background: "rgba(255,252,240,0.8)", border: "1px solid var(--divider)", color: "var(--text-primary)" }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSendChat}
+                    className="btn-neon px-4 py-2 rounded-xl flex items-center justify-center"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </PageTransition>
   );

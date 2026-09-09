@@ -51,6 +51,7 @@ export default function SettingsPage() {
   const [wakeTime, setWakeTime] = useState("07:30");
   const [sleepEnabled, setSleepEnabled] = useState(false);
   const [sleepTime, setSleepTime] = useState("23:00");
+  const [alarmSettingsLoaded, setAlarmSettingsLoaded] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -69,7 +70,48 @@ export default function SettingsPage() {
       document.documentElement.style.setProperty("--font-size-base", savedFont);
       document.documentElement.style.fontSize = savedFont;
     }
+    const savedAlarm = localStorage.getItem("pd-alarm-settings");
+    if (savedAlarm) {
+      try {
+        const alarm = JSON.parse(savedAlarm);
+        setWakeEnabled(Boolean(alarm.wakeEnabled));
+        setWakeTime(alarm.wakeTime || "07:30");
+        setSleepEnabled(Boolean(alarm.sleepEnabled));
+        setSleepTime(alarm.sleepTime || "23:00");
+      } catch {
+        // 无效的旧配置保持默认值，下一次修改时会自动修复。
+      }
+    }
+    setAlarmSettingsLoaded(true);
   }, []);
+
+  useEffect(() => {
+    if (!alarmSettingsLoaded) return;
+
+    let previous: Record<string, unknown> = {};
+    try {
+      previous = JSON.parse(localStorage.getItem("pd-alarm-settings") || "{}");
+    } catch {
+      previous = {};
+    }
+
+    localStorage.setItem("pd-alarm-settings", JSON.stringify({
+      ...previous,
+      wakeEnabled,
+      wakeTime,
+      sleepEnabled,
+      sleepTime,
+      sleepEarlyMinutes: previous.sleepEarlyMinutes ?? 15,
+      wakeMessage: previous.wakeMessage ?? "新的一天开始了，起床解码拖延！",
+    }));
+  }, [alarmSettingsLoaded, wakeEnabled, wakeTime, sleepEnabled, sleepTime]);
+
+  useEffect(() => {
+    if (!alarmSettingsLoaded || (!wakeEnabled && !sleepEnabled)) return;
+    if ("Notification" in window && Notification.permission === "default") {
+      void Notification.requestPermission();
+    }
+  }, [alarmSettingsLoaded, wakeEnabled, sleepEnabled]);
 
   const updateTimerSettings = (key: string, value: any) => {
     const saved = localStorage.getItem("pd-timer-settings");
