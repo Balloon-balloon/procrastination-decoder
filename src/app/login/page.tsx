@@ -1,6 +1,6 @@
 "use client";
 import { useState, Suspense, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PageTransition } from "@/components/Animations";
 import {
   registerUserWithEmail,
@@ -30,6 +30,7 @@ import Link from "next/link";
 
 function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentUser, switchToUser, logout } = useAppData();
   const { showToast } = useToast();
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -44,7 +45,6 @@ function LoginContent() {
   const [unverifiedEmail, setUnverifiedEmail] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
   const [showVerifyInput, setShowVerifyInput] = useState(false);
-  const [demoCode, setDemoCode] = useState<string | null>(null);
   // 人机验证：数学题
   const [captchaA, setCaptchaA] = useState(0);
   const [captchaB, setCaptchaB] = useState(0);
@@ -58,19 +58,20 @@ function LoginContent() {
 
   useEffect(() => {
     refreshCaptcha();
-  }, []);
+    if (searchParams.get("verified") === "1") {
+      setMode("login");
+      setSuccess("邮箱验证成功，请输入用户名和密码登录");
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
     setShowResend(false);
-    setDemoCode(null);
     setShowVerifyInput(false);
     setLoading(true);
     playClickSound();
-
-    await new Promise((r) => setTimeout(r, 500));
 
     try {
     if (mode === "register") {
@@ -89,29 +90,27 @@ function LoginContent() {
       }
       const result = await registerUserWithEmail(username, email, password, Number(captchaAnswer), captchaA + captchaB);
       if (result.success && result.user) {
-        // 如果已自动验证（开发模式无验证），直接登录
+        // 兼容已经验证的旧账号；新注册账号必须完成邮件验证。
         if (result.user.verified) {
-          setSuccess("注册成功！正在为你登录...");
-          showToast(`欢迎加入 whywait，${result.user.username} 🎉`, "success");
-          switchToUser(result.user);
-          setTimeout(() => router.push("/"), 800);
-        } else if (result.verificationCode) {
-          // 演示模式：显示验证码
-          setDemoCode(result.verificationCode);
+          setMode("login");
+          setPassword("");
+          setConfirmPassword("");
+          setSuccess("邮箱验证成功，请输入用户名和密码登录");
+          showToast("邮箱验证成功，请登录", "success");
+        } else {
+          setSuccess(`6 位验证码已发送到 ${email}，请在 15 分钟内完成验证`);
+          setShowResend(true);
           setShowVerifyInput(true);
           setUnverifiedEmail(email);
-          setSuccess(`注册成功！演示模式验证码：${result.verificationCode}`);
-          showToast("注册成功，请输入验证码完成验证", "success");
-        } else {
-          setSuccess(`验证邮件已发送到 ${email}，请查收邮箱并点击验证链接完成注册`);
-          setShowResend(true);
-          setUnverifiedEmail(email);
+          setVerifyCode("");
           showToast("验证邮件已发送 📧", "success");
         }
       } else {
         setError(result.message);
         if (result.requiresVerification) {
+          setMode("register");
           setShowResend(true);
+          setShowVerifyInput(true);
           setUnverifiedEmail(result.user?.email || email);
         }
         playErrorSound();
@@ -127,7 +126,9 @@ function LoginContent() {
       } else {
         setError(result.message);
         if (result.user && !result.user.verified) {
+          setMode("register");
           setShowResend(true);
+          setShowVerifyInput(true);
           setUnverifiedEmail(result.user?.email || username);
         }
         playErrorSound();
@@ -147,15 +148,12 @@ function LoginContent() {
     playClickSound();
     const result = await resendVerification(unverifiedEmail);
     if (result.success) {
-      if (result.verificationCode) {
-        setDemoCode(result.verificationCode);
-        setShowVerifyInput(true);
-        showToast("验证码已重新生成", "success");
-        setSuccess(`新的验证码：${result.verificationCode}`);
-      } else {
-        showToast("验证邮件已重新发送 📧", "success");
-        setSuccess(`验证邮件已重新发送到 ${unverifiedEmail}`);
-      }
+      setError("");
+      setVerifyCode("");
+      setShowVerifyInput(true);
+      setShowResend(true);
+      showToast("验证邮件已重新发送 📧", "success");
+      setSuccess(`新的 6 位验证码已发送到 ${unverifiedEmail}`);
     } else {
       setError(result.message);
       playErrorSound();
@@ -163,16 +161,22 @@ function LoginContent() {
   };
 
   const handleVerifyCode = async () => {
-    if (!unverifiedEmail || !verifyCode.trim()) return;
+    if (loading || !unverifiedEmail || !verifyCode.trim()) return;
     setLoading(true);
     playClickSound();
     try {
       const result = await verifyEmailByCode(unverifiedEmail, verifyCode.trim());
       if (result.success && result.user) {
-        setSuccess("验证成功！正在为你登录...");
-        showToast("邮箱验证成功 🎉", "success");
-        switchToUser(result.user);
-        setTimeout(() => router.push("/"), 800);
+        setMode("login");
+        setUsername(result.user.username);
+        setPassword("");
+        setConfirmPassword("");
+        setVerifyCode("");
+        setShowVerifyInput(false);
+        setShowResend(false);
+        setError("");
+        setSuccess("邮箱验证成功，请输入密码登录");
+        showToast("邮箱验证成功，现在可以登录了 🎉", "success");
       } else {
         setError(result.message);
         playErrorSound();
@@ -256,14 +260,14 @@ function LoginContent() {
                 style={{ background: "rgba(43,58,103,0.06)" }}
               >
                 <button
-                  onClick={() => { setMode("login"); setError(""); setSuccess(""); setShowResend(false); }}
+                  onClick={() => { setMode("login"); setError(""); setSuccess(""); setShowResend(false); setShowVerifyInput(false); setVerifyCode(""); }}
                   className="flex-1 py-2 rounded-lg text-sm font-bold font-hand transition-all flex items-center justify-center gap-1.5"
                   style={mode === "login" ? { background: "var(--color-neon-orange)", color: "#fff" } : { color: "var(--text-muted)" }}
                 >
                   <LogIn className="w-4 h-4" /> 登录
                 </button>
                 <button
-                  onClick={() => { setMode("register"); setError(""); setSuccess(""); setShowResend(false); }}
+                  onClick={() => { setMode("register"); setError(""); setSuccess(""); setShowResend(false); setShowVerifyInput(false); setVerifyCode(""); }}
                   className="flex-1 py-2 rounded-lg text-sm font-bold font-hand transition-all flex items-center justify-center gap-1.5"
                   style={mode === "register" ? { background: "var(--color-neon-orange)", color: "#fff" } : { color: "var(--text-muted)" }}
                 >
@@ -271,7 +275,19 @@ function LoginContent() {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form
+                onSubmit={(event) => {
+                  if (showVerifyInput) {
+                    event.preventDefault();
+                    void handleVerifyCode();
+                    return;
+                  }
+                  void handleSubmit(event);
+                }}
+                className="space-y-4"
+              >
+                {!showVerifyInput && (
+                  <>
                 {/* 用户名 */}
                 <div>
                   <label className="text-xs font-hand mb-1.5 block" style={{ color: "var(--text-muted)" }}>
@@ -388,6 +404,8 @@ function LoginContent() {
                     </div>
                   </div>
                 )}
+                  </>
+                )}
 
                 {/* 错误提示 */}
                 {error && (
@@ -417,42 +435,31 @@ function LoginContent() {
                   </button>
                 )}
 
-                {/* 验证码输入（演示模式） */}
+                {/* 邮箱验证码输入 */}
                 {showVerifyInput && (
                   <div
                     className="p-3 rounded-xl space-y-2"
                     style={{ background: "rgba(250,214,165,0.2)", border: "1px solid var(--divider)" }}
                   >
                     <p className="text-xs font-hand" style={{ color: "var(--text-muted)" }}>
-                      请输入 4 位验证码完成验证
+                      请输入邮件中的 6 位验证码完成注册
                     </p>
-                    {demoCode && (
-                      <div
-                        className="text-center py-2 rounded-lg font-bold font-hand text-lg tracking-widest"
-                        style={{
-                          background: "var(--color-neon-orange)",
-                          color: "#fff",
-                          letterSpacing: "0.3em",
-                        }}
-                      >
-                        {demoCode}
-                      </div>
-                    )}
                     <div className="flex gap-2">
                       <input
                         type="text"
                         inputMode="numeric"
-                        maxLength={4}
+                        maxLength={6}
                         value={verifyCode}
                         onChange={(e) => setVerifyCode(e.target.value.replace(/[^0-9]/g, ""))}
                         placeholder="输入验证码"
+                        autoFocus
                         className="flex-1 px-3 py-2 rounded-lg text-sm font-hand text-center tracking-widest focus:outline-none"
                         style={{ background: "rgba(255,252,240,0.9)", border: "1px solid var(--divider)", color: "var(--text-primary)" }}
                       />
                       <button
                         type="button"
                         onClick={handleVerifyCode}
-                        disabled={loading || verifyCode.length < 4}
+                        disabled={loading || verifyCode.length !== 6}
                         className="px-4 py-2 rounded-lg text-xs font-bold font-hand transition-colors disabled:opacity-50"
                         style={{ background: "var(--color-neon-green)", color: "var(--color-ink)" }}
                       >
@@ -470,23 +477,25 @@ function LoginContent() {
                   </div>
                 )}
 
-                {/* 提交按钮 */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-neon w-full text-sm font-hand disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      处理中...
-                    </>
-                  ) : mode === "login" ? (
-                    "登录"
-                  ) : (
-                    "注册并发送验证邮件"
-                  )}
-                </button>
+                {/* 提交按钮；邮箱验证步骤只响应验证码，不再重复提交注册。 */}
+                {!showVerifyInput && (
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-neon w-full text-sm font-hand disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        处理中...
+                      </>
+                    ) : mode === "login" ? (
+                      "登录"
+                    ) : (
+                      "注册并发送验证邮件"
+                    )}
+                  </button>
+                )}
               </form>
 
               {/* 底部切换 */}
@@ -495,7 +504,7 @@ function LoginContent() {
                   <>
                     还没有账号？
                     <button
-                      onClick={() => { setMode("register"); setError(""); setSuccess(""); setShowResend(false); }}
+                      onClick={() => { setMode("register"); setError(""); setSuccess(""); setShowResend(false); setShowVerifyInput(false); setVerifyCode(""); }}
                       className="ml-1 font-bold font-hand"
                       style={{ color: "var(--color-neon-orange)" }}
                     >
@@ -506,7 +515,7 @@ function LoginContent() {
                   <>
                     已有账号？
                     <button
-                      onClick={() => { setMode("login"); setError(""); setSuccess(""); setShowResend(false); }}
+                      onClick={() => { setMode("login"); setError(""); setSuccess(""); setShowResend(false); setShowVerifyInput(false); setVerifyCode(""); }}
                       className="ml-1 font-bold font-hand"
                       style={{ color: "var(--color-neon-orange)" }}
                     >

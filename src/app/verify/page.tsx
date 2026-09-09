@@ -2,14 +2,12 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { verifyEmail } from "@/lib/auth";
-import { useAppData } from "@/hooks/useAppData";
 import { PageTransition } from "@/components/Animations";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
 function VerifyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { switchToUser } = useAppData();
   const token = searchParams.get("token");
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
@@ -27,9 +25,8 @@ function VerifyContent() {
       if (!active) return;
       if (result.success && result.user) {
         setStatus("success");
-        setMessage("邮箱验证成功！正在为你登录...");
-        switchToUser(result.user);
-        setTimeout(() => router.push("/"), 2000);
+        setMessage("邮箱验证成功！正在返回登录页...");
+        setTimeout(() => router.replace("/login?verified=1"), 1500);
       } else {
         setStatus("error");
         setMessage(result.message);
@@ -37,7 +34,7 @@ function VerifyContent() {
     };
     void runVerification();
     return () => { active = false; };
-  }, [token, router, switchToUser]);
+  }, [token, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 paper-bg">

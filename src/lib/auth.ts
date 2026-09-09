@@ -41,18 +41,28 @@ export interface AuthResult {
   message: string;
   user?: User;
   requiresVerification?: boolean;
-  verificationCode?: string;
 }
 
-function upsertSessionUser(user: User, makeCurrent: boolean): void {
+function upsertSessionUser(user: User, makeCurrent: boolean, clearMatchingSession = false): void {
   const state = loadAuthState();
   const safeUser = { ...user, password: undefined };
   const users = state.users.some((item) => item.id === user.id)
     ? state.users.map((item) => (item.id === user.id ? safeUser : item))
     : [...state.users.filter((item) => item.email !== user.email), safeUser];
-  saveAuthState({ currentUserId: makeCurrent ? user.id : state.currentUserId, users });
+  const currentUserId = makeCurrent
+    ? user.id
+    : clearMatchingSession && state.currentUserId === user.id
+      ? null
+      : state.currentUserId;
+  saveAuthState({ currentUserId, users });
   if (makeCurrent && typeof window !== "undefined") {
     sessionStorage.setItem(TAB_USER_KEY, user.id);
+  } else if (
+    clearMatchingSession &&
+    typeof window !== "undefined" &&
+    sessionStorage.getItem(TAB_USER_KEY) === user.id
+  ) {
+    sessionStorage.removeItem(TAB_USER_KEY);
   }
 }
 
@@ -68,7 +78,7 @@ export async function registerUserWithEmail(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, email, password, captchaAnswer, captchaExpected }),
   });
-  if (result.user) upsertSessionUser(result.user, result.success && result.user.verified);
+  if (result.user) upsertSessionUser(result.user, false);
   return result;
 }
 
@@ -101,7 +111,7 @@ export async function verifyEmail(token: string): Promise<AuthResult> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
   });
-  if (result.success && result.user) upsertSessionUser(result.user, true);
+  if (result.success && result.user) upsertSessionUser(result.user, false, true);
   return result;
 }
 
@@ -111,7 +121,7 @@ export async function verifyEmailByCode(email: string, code: string): Promise<Au
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, code }),
   });
-  if (result.success && result.user) upsertSessionUser(result.user, true);
+  if (result.success && result.user) upsertSessionUser(result.user, false, true);
   return result;
 }
 

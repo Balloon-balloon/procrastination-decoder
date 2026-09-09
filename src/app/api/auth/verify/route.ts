@@ -17,7 +17,10 @@ export async function POST(req: NextRequest) {
         user = database.users.find((item) => item.verificationToken === token);
         if (!user) return { status: 400, message: "验证链接无效或已使用" } as const;
       } else if (code && email) {
-        // 通过验证码验证（演示模式）
+        if (!/^\d{6}$/.test(code)) {
+          return { status: 400, message: "请输入邮件中的 6 位验证码" } as const;
+        }
+        // 通过邮件中的 6 位验证码验证
         user = database.users.find((item) => item.emailKey === email && item.verificationCode === code);
         if (!user) return { status: 400, message: "验证码错误，请重新输入" } as const;
       } else {
@@ -31,8 +34,7 @@ export async function POST(req: NextRequest) {
       user.verificationToken = undefined;
       user.verificationCode = undefined;
       user.verificationExpiresAt = undefined;
-      user.lastLoginAt = new Date().toISOString();
-      return { status: 200, message: "邮箱验证成功", user: { ...toPublicUser(user), isFirstLogin: true } } as const;
+      return { status: 200, message: "邮箱验证成功，请返回登录页登录", user: toPublicUser(user) } as const;
     });
     return NextResponse.json({ success: result.status === 200, message: result.message, user: result.user }, { status: result.status });
   } catch (error) {
