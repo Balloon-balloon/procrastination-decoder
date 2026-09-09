@@ -4,7 +4,6 @@ interface VerificationEmailInput {
   email: string;
   username: string;
   verifyUrl: string;
-  code?: string;
 }
 
 export function hasEmailService(): boolean {

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/components/Toast";
 import { useAppData } from "@/hooks/useAppData";
 import {
@@ -15,8 +15,9 @@ import {
   startSubTask,
   deleteSubTask,
 } from "@/lib/store";
-import { Task, SubTask } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import { EstimatedTimeUnit, Task, SubTask } from "@/lib/types";
+import { formatDate, getEffectivePriority } from "@/lib/utils";
+import { formatEstimatedTime } from "@/lib/time";
 import { TaskBreakdownResult } from "@/components/TaskBreakdownResult";
 import { PageTransition, StaggerContainer, FadeInItem, HoverCard } from "@/components/Animations";
 import {
@@ -32,9 +33,14 @@ import {
   Loader2,
   Pencil,
   X,
+  Upload,
+  FileText,
+  Image as ImageIcon,
+  Timer,
 } from "lucide-react";
 
 const PRIORITY_CONFIG = {
+  auto: { label: "自动", color: "text-blue-400", bg: "bg-blue-500/20" },
   low: { label: "低", color: "text-green-400", bg: "bg-green-500/20" },
   medium: { label: "中", color: "text-yellow-400", bg: "bg-yellow-500/20" },
   high: { label: "高", color: "text-orange-400", bg: "bg-orange-500/20" },
@@ -55,21 +61,26 @@ export default function TasksPage() {
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
-    priority: "medium" as Task["priority"],
+    priority: "auto" as Task["priority"],
     category: "学习",
     estimatedTime: 30,
+    estimatedUnit: "minute" as EstimatedTimeUnit,
     tags: [] as string[],
     dueDate: "",
   });
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; type: string; size: number; content?: string }[]>([]);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState<"all" | "todo" | "in-progress" | "completed" | "postponed">("all");
   const [sortBy, setSortBy] = useState<"priority" | "created" | "postponed">("created");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editForm, setEditForm] = useState({
     title: "",
     description: "",
-    priority: "medium" as Task["priority"],
+    priority: "auto" as Task["priority"],
     category: "学习",
     estimatedTime: 30,
+    estimatedUnit: "minute" as EstimatedTimeUnit,
     dueDate: "" as string,
     tags: [] as string[],
   });
@@ -82,6 +93,7 @@ export default function TasksPage() {
       priority: task.priority,
       category: task.category,
       estimatedTime: task.estimatedTime,
+      estimatedUnit: task.estimatedUnit || "minute",
       dueDate: task.dueDate || "",
       tags: task.tags || [],
     });
@@ -96,6 +108,7 @@ export default function TasksPage() {
         priority: editForm.priority,
         category: editForm.category,
         estimatedTime: editForm.estimatedTime,
+        estimatedUnit: editForm.estimatedUnit,
         dueDate: editForm.dueDate || null,
         tags: editForm.tags,
       })
@@ -110,8 +123,10 @@ export default function TasksPage() {
     .filter((t) => (filter === "all" ? true : t.status === filter))
     .sort((a, b) => {
       if (sortBy === "priority") {
-        const order = { urgent: 0, high: 1, medium: 2, low: 3 };
-        return order[a.priority] - order[b.priority];
+        const order = { urgent: 0, high: 1, medium: 2, low: 3, auto: 4 };
+        const aPri = getEffectivePriority(a.priority, a.dueDate);
+        const bPri = getEffectivePriority(b.priority, b.dueDate);
+        return order[aPri] - order[bPri];
       }
       if (sortBy === "postponed") {
         return b.postponedCount - a.postponedCount;
@@ -129,8 +144,10 @@ export default function TasksPage() {
         status: "todo",
         category: newTask.category,
         estimatedTime: newTask.estimatedTime,
+        estimatedUnit: newTask.estimatedUnit,
         tags: newTask.tags,
         dueDate: newTask.dueDate || null,
+        attachments: uploadedFiles.length > 0 ? uploadedFiles.map(f => ({ name: f.name, type: f.type, content: f.content })) : undefined,
       })
     );
     showToast("任务创建成功", "success");
@@ -140,9 +157,11 @@ export default function TasksPage() {
       priority: "medium",
       category: "学习",
       estimatedTime: 30,
+      estimatedUnit: "minute",
       tags: [],
       dueDate: "",
     });
+    setUploadedFiles([]);
     setShowForm(false);
   };
 
@@ -193,6 +212,76 @@ export default function TasksPage() {
                 className="w-full px-4 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50 transition-colors resize-none"
               />
             </div>
+
+            {/* 上传文件/图片 */}
+            <div>
+              <label className="text-xs text-dark-400 mb-1 block">
+                参考资料（可选） <span className="text-dark-500">· AI 会自动读取内容</span>
+              </label>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all hover:border-accent-500/50 hover:bg-dark-800/30"
+                style={{ borderColor: "var(--divider)" }}
+              >
+                <Upload className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--text-muted)" }} />
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  点击上传文件或图片
+                </p>
+                <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
+                  支持 PDF、Word、TXT、图片等，AI 会帮你总结
+                </p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,.pdf,.txt,.doc,.docx,.md"
+                className="hidden"
+                onChange={async (e) => {
+                  const files = e.target.files;
+                  if (!files) return;
+                  const newFiles = await Promise.all(
+                    Array.from(files).map(async (f) => {
+                      const fileObj: { name: string; type: string; size: number; content?: string } = {
+                        name: f.name,
+                        type: f.type,
+                        size: f.size,
+                      };
+                      if (f.type.startsWith("text/") || f.name.match(/\.(txt|md|markdown)$/i)) {
+                        const text = await f.text();
+                        fileObj.content = text.slice(0, 5000);
+                      }
+                      return fileObj;
+                    })
+                  );
+                  setUploadedFiles(prev => [...prev, ...newFiles]);
+                  e.target.value = "";
+                }}
+              />
+              {uploadedFiles.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {uploadedFiles.map((file, i) => (
+                    <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: "rgba(0,0,0,0.1)" }}>
+                      {file.type.startsWith("image/") ? (
+                        <ImageIcon className="w-4 h-4 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
+                      ) : (
+                        <FileText className="w-4 h-4 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
+                      )}
+                      <span className="flex-1 truncate" style={{ color: "var(--text-primary)" }}>{file.name}</span>
+                      <span className="text-[10px] flex-shrink-0" style={{ color: "var(--text-muted)" }}>
+                        {(file.size / 1024).toFixed(0)}KB
+                      </span>
+                      <button
+                        onClick={() => setUploadedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                        className="p-1 hover:bg-black/10 rounded flex-shrink-0"
+                      >
+                        <X className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-dark-400 mb-1 block">优先级</label>
@@ -203,6 +292,7 @@ export default function TasksPage() {
                   }
                   className="w-full px-3 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
                 >
+                  <option value="auto">自动（按截止日期）</option>
                   <option value="low">低</option>
                   <option value="medium">中</option>
                   <option value="high">高</option>
@@ -224,15 +314,25 @@ export default function TasksPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-dark-400 mb-1 block">预估时间（分钟）</label>
-                <input
-                  type="number"
-                  value={newTask.estimatedTime}
-                  onChange={(e) =>
-                    setNewTask({ ...newTask, estimatedTime: parseInt(e.target.value) || 0 })
-                  }
-                  className="w-full px-3 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
-                />
+                <label className="text-xs text-dark-400 mb-1 block">预估时间</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={newTask.estimatedTime}
+                    onChange={(e) => setNewTask({ ...newTask, estimatedTime: parseInt(e.target.value) || 0 })}
+                    className="min-w-0 flex-1 px-3 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
+                  />
+                  <select
+                    value={newTask.estimatedUnit}
+                    onChange={(e) => setNewTask({ ...newTask, estimatedUnit: e.target.value as EstimatedTimeUnit })}
+                    className="w-24 px-2 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
+                  >
+                    <option value="minute">分钟</option>
+                    <option value="day">天</option>
+                    <option value="week">周</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="text-xs text-dark-400 mb-1 block">截止日期</label>
@@ -242,6 +342,28 @@ export default function TasksPage() {
                   onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
                   className="w-full px-3 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
                 />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {[
+                    { label: "今天", get: () => new Date() },
+                    { label: "明天", get: () => { const d = new Date(); d.setDate(d.getDate() + 1); return d; } },
+                    { label: "本周内", get: () => { const d = new Date(); d.setDate(d.getDate() + 7); return d; } },
+                    { label: "两周内", get: () => { const d = new Date(); d.setDate(d.getDate() + 14); return d; } },
+                    { label: "本月内", get: () => { const d = new Date(); d.setMonth(d.getMonth() + 1); return d; } },
+                    { label: "两月内", get: () => { const d = new Date(); d.setMonth(d.getMonth() + 2); return d; } },
+                    { label: "三个月", get: () => { const d = new Date(); d.setMonth(d.getMonth() + 3); return d; } },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => {
+                        const d = preset.get();
+                        setNewTask({ ...newTask, dueDate: d.toISOString().slice(0, 10) });
+                      }}
+                      className="px-2 py-0.5 rounded-full text-xs text-dark-400 hover:text-dark-200 bg-dark-800/30 border border-dark-700/30 hover:border-dark-600/50 transition-colors"
+                    >
+                      + {preset.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div>
@@ -383,15 +505,25 @@ export default function TasksPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-dark-400 mb-1 block">预估时间（分钟）</label>
-                  <input
-                    type="number"
-                    value={editForm.estimatedTime}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, estimatedTime: parseInt(e.target.value) || 0 })
-                    }
-                    className="w-full px-3 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
-                  />
+                  <label className="text-xs text-dark-400 mb-1 block">预估时间</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={editForm.estimatedTime}
+                      onChange={(e) => setEditForm({ ...editForm, estimatedTime: parseInt(e.target.value) || 0 })}
+                      className="min-w-0 flex-1 px-3 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
+                    />
+                    <select
+                      value={editForm.estimatedUnit}
+                      onChange={(e) => setEditForm({ ...editForm, estimatedUnit: e.target.value as EstimatedTimeUnit })}
+                      className="w-24 px-2 py-2.5 rounded-xl bg-dark-800/50 border border-dark-700/50 text-white text-sm focus:outline-none focus:border-accent-500/50"
+                    >
+                      <option value="minute">分钟</option>
+                      <option value="day">天</option>
+                      <option value="week">周</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-dark-400 mb-1 block">截止日期</label>
@@ -550,6 +682,10 @@ export default function TasksPage() {
                   update((prev) => setTaskBreakdownStatus(prev, task.id, "loading"));
                   try {
                     const personality = data.profile.personalityResult;
+                    const fileSummary = task.attachments
+                      ?.filter((a) => a.content)
+                      .map((a) => `【${a.name}】${a.content}`)
+                      .join("\n") || undefined;
                     const res = await fetch("/api/breakdown", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
@@ -558,6 +694,8 @@ export default function TasksPage() {
                         taskDescription: task.description,
                         personalityType: personality?.type,
                         personalityName: personality?.typeName,
+                        fileSummary,
+                        dueDate: task.dueDate || undefined,
                       }),
                     });
                     const result = await res.json();
@@ -568,7 +706,12 @@ export default function TasksPage() {
                           newData,
                           task.id,
                           "done",
-                          result.overallStrategy
+                          result.overallStrategy,
+                          {
+                            taskUnderstanding: result.taskUnderstanding,
+                            painPointResponse: result.painPointResponse,
+                            executionPlan: result.executionPlan,
+                          }
                         );
                         return newData;
                       });
@@ -624,7 +767,8 @@ function TaskCard({
   onDeleteSubTask: (subTaskId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const priority = PRIORITY_CONFIG[task.priority];
+  const effectivePriority = getEffectivePriority(task.priority, task.dueDate);
+  const priority = PRIORITY_CONFIG[effectivePriority];
   const status = STATUS_CONFIG[task.status];
   const hasBreakdown = task.breakdownStatus === "done" && subTasks.length > 0;
 
@@ -675,11 +819,22 @@ function TaskCard({
               <Calendar className="w-3 h-3" /> {formatDate(task.createdAt)}
             </span>
             <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {task.estimatedTime} 分钟
+              <Clock className="w-3 h-3" /> 预估 {formatEstimatedTime(task.estimatedTime, task.estimatedUnit)}
             </span>
+            {task.actualTime > 0 && (
+              <span className="flex items-center gap-1 text-accent-400">
+                <Timer className="w-3 h-3" /> 已投入 {task.actualTime} 分钟
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <Tag className="w-3 h-3" /> {task.category}
             </span>
+            {task.dueDate && (
+              <span className="flex items-center gap-1 text-orange-400">
+                <Calendar className="w-3 h-3" />
+                截止 {new Date(task.dueDate).toLocaleDateString("zh-CN", { month: "short", day: "numeric" })}
+              </span>
+            )}
             {task.postponedCount > 0 && (
               <span className="text-orange-400">推迟 {task.postponedCount} 次</span>
             )}
@@ -708,9 +863,31 @@ function TaskCard({
             <TaskBreakdownResult
               subTasks={subTasks}
               overallStrategy={task.overallStrategy}
+              taskUnderstanding={task.taskUnderstanding}
+              painPointResponse={task.painPointResponse}
+              executionPlan={task.executionPlan}
+              taskTitle={task.title}
               onComplete={onCompleteSubTask}
               onStart={onStartSubTask}
               onDelete={onDeleteSubTask}
+              onAdjustPlan={async (progressText) => {
+                const completedSteps = subTasks.filter(s => s.status === "completed").map(s => s.title);
+                const remainingSteps = subTasks.filter(s => s.status !== "completed").map(s => s.title);
+                const totalMinutes = subTasks.reduce((sum, s) => sum + s.estimatedMinutes, 0);
+                const res = await fetch("/api/adjust-plan", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    taskTitle: task.title,
+                    completedSteps,
+                    remainingSteps,
+                    progressText,
+                    totalMinutes,
+                  }),
+                });
+                const data = await res.json();
+                return data.suggestion || "建议已收到，继续加油！";
+              }}
             />
           )}
 
@@ -743,6 +920,14 @@ function TaskCard({
               >
                 开始
               </button>
+            )}
+            {task.status !== "completed" && (
+              <a
+                href={`/focus?taskId=${task.id}`}
+                className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors flex items-center gap-1"
+              >
+                <Timer className="w-3 h-3" /> 专注
+              </a>
             )}
             {task.status !== "completed" && (
               <button

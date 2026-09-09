@@ -202,7 +202,7 @@ export function BackgroundMusic() {
       if (firstClick) {
         firstClick = false;
         if (!isPlaying && audioRef.current) {
-          startMusic();
+          // 不自动播放，等用户手动点
         }
       }
     };

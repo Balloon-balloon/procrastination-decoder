@@ -29,3 +29,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local persistent application data
+/data/whywait-db.json
+/data/whywait-db.json.tmp

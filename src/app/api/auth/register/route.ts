@@ -4,6 +4,10 @@ import { hasEmailService, sendVerificationEmail } from "@/lib/server-email";
 
 export const runtime = "nodejs";
 
+function generateVerifyCode(): string {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -26,6 +30,7 @@ export async function POST(req: NextRequest) {
     const hasEmail = hasEmailService();
     const now = new Date().toISOString();
     const verificationToken = hasEmail ? createId() + createId() : undefined;
+    const verificationCode = !hasEmail ? generateVerifyCode() : undefined;
     const { hash, salt } = hashPassword(password);
 
     const created = await withDatabase((database) => {
@@ -34,9 +39,10 @@ export async function POST(req: NextRequest) {
       const user = {
         id: createId(), username, usernameKey, email, emailKey,
         passwordHash: hash, passwordSalt: salt,
-        verified: !hasEmail,
+        verified: !hasEmail && !verificationCode,
         verificationToken,
-        verificationExpiresAt: hasEmail ? new Date(Date.now() + 86400000).toISOString() : undefined,
+        verificationCode,
+        verificationExpiresAt: (verificationToken || verificationCode) ? new Date(Date.now() + 86400000).toISOString() : undefined,
         createdAt: now, lastLoginAt: now,
       };
       database.users.push(user);
@@ -63,7 +69,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 无邮件服务：直接注册成功，自动登录
+    // 演示模式：返回验证码
+    if (verificationCode) {
+      return NextResponse.json({
+        success: true,
+        message: "注册成功（演示模式）",
+        requiresVerification: true,
+        verificationCode,
+        user: toPublicUser(created.user),
+      });
+    }
+
+    // 无需验证：直接注册成功，自动登录
     return NextResponse.json({
       success: true,
       message: "注册成功，已自动登录",
