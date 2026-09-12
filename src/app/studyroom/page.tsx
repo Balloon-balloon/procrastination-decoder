@@ -5,6 +5,7 @@ import { PageTransition, StaggerContainer, FadeInItem } from "@/components/Anima
 import { Users, Crown, LogOut, Play, Pause, Sparkles, Zap } from "lucide-react";
 import { playClickSound, playCompleteSound } from "@/lib/sound";
 import { useToast } from "@/components/Toast";
+import { loadAuthState, getCurrentUser } from "@/lib/auth";
 
 interface Seat {
   id: string;
@@ -20,18 +21,30 @@ interface Seat {
 const ROOM_NAMES_STUDENT = ["考研自习室", "四六级突击", "期末冲刺", "图书馆三楼", "深夜自习室"];
 const ROOM_NAMES_WORKER = ["996 作战室", "Q4 冲刺营", "咖啡厅工位", "深夜加班组", "周一早会前"];
 
-const MOCK_USERS = [
-  { emoji: "🐼", name: "熊猫同学", task: "背单词50个" },
-  { emoji: "🦊", name: "狐狸同学", task: "微积分作业" },
-  { emoji: "🐱", name: "猫咪同学", task: "论文初稿" },
-  { emoji: "🐰", name: "兔子同学", task: "代码debug" },
-  { emoji: "🦉", name: "猫头鹰同学", task: "复习线代" },
-  { emoji: "🐸", name: "青蛙同学", task: "读论文2篇" },
-  { emoji: "🐧", name: "企鹅同学", task: "刷LeetCode" },
-  { emoji: "🦝", name: "浣熊同学", task: "写实验报告" },
+const EMOJI_POOL = ["🐼", "🦊", "🐱", "🐰", "🦉", "🐸", "🐧", "🦝", "🐨", "🦁", "🐯", "🐮", "🐷", "🐵", "🐔", "🦄"];
+
+const TASK_POOL = [
+  "背单词50个", "微积分作业", "论文初稿", "代码debug", "复习线代",
+  "读论文2篇", "刷LeetCode", "写实验报告", "整理笔记", "看网课",
+  "做真题", "背作文模板", "高数练习", "Python项目", "英语听力",
 ];
 
 const ENCOURAGE_MSGS = ["加油💪", "一起冲！", "别放弃！", "你可以的", "我在学呢", "坚持住"];
+
+// 从 localStorage 中读取所有注册用户作为真实用户池
+function getRealUsers() {
+  try {
+    const state = loadAuthState();
+    return state.users.map((u, i) => ({
+      id: u.id,
+      name: u.username,
+      emoji: EMOJI_POOL[i % EMOJI_POOL.length],
+      task: TASK_POOL[i % TASK_POOL.length],
+    }));
+  } catch {
+    return [];
+  }
+}
 
 export default function StudyRoomPage() {
   const { showToast } = useToast();
@@ -42,8 +55,10 @@ export default function StudyRoomPage() {
   const [timerMode, setTimerMode] = useState<"focus" | "break">("focus");
   const [remainingSeconds, setRemainingSeconds] = useState(25 * 60);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [encourageMsgs, setEncourageMsgs] = useState<{ id: string; emoji: string; msg: string }[]>([]);
+  const [encourageMsgs, setEncourageMsgs] = useState<{ id: string; emoji: string; msg: string; name: string }[]>([]);
   const [todayRoomCount, setTodayRoomCount] = useState(0);
+
+  const realUsers = useMemo(() => getRealUsers(), []);
 
   useEffect(() => {
     const todayKey = `pd-roomcount-${new Date().toDateString()}`;
@@ -60,15 +75,22 @@ export default function StudyRoomPage() {
     const names = isPublic ? ROOM_NAMES_STUDENT : ROOM_NAMES_STUDENT;
     setRoomName(names[Math.floor(Math.random() * names.length)]);
 
-    // 生成座位：只有用户是真实的，其他是虚拟学伴（陪伴模式）
-    const virtualCount = Math.floor(Math.random() * 6) + 4; // 4-9个虚拟学伴
-    const usedEmojis: string[] = [];
+    const currentUser = getCurrentUser();
+    const currentUserName = currentUser?.username || "我";
+
+    // 过滤掉自己，从真实用户池中随机选取
+    const otherUsers = realUsers.filter((u) => u.name !== currentUserName);
+    const shuffled = [...otherUsers].sort(() => Math.random() - 0.5);
+    const onlineCount = Math.min(shuffled.length, Math.floor(Math.random() * 5) + 3); // 3-7位真实用户
+    const onlineUsers = shuffled.slice(0, onlineCount);
+
+    // 生成座位
     const newSeats: Seat[] = Array.from({ length: 20 }, (_, i) => {
       if (i === 0) {
         return {
           id: "me",
           emoji: "⭐",
-          name: "我",
+          name: currentUserName,
           task: "专注学习中",
           focusMinutes: 0,
           isHost: true,
@@ -76,24 +98,18 @@ export default function StudyRoomPage() {
           status: "studying" as const,
         };
       }
-      // 虚拟学伴
-      if (i <= virtualCount) {
-        let mockUser = MOCK_USERS[Math.floor(Math.random() * MOCK_USERS.length)];
-        let attempts = 0;
-        while (usedEmojis.includes(mockUser.emoji) && attempts < 8) {
-          mockUser = MOCK_USERS[Math.floor(Math.random() * MOCK_USERS.length)];
-          attempts++;
-        }
-        usedEmojis.push(mockUser.emoji);
+      // 真实在线用户
+      if (i <= onlineUsers.length) {
+        const user = onlineUsers[i - 1];
         return {
-          id: `seat-${i}`,
-          emoji: mockUser.emoji,
-          name: mockUser.name,
-          task: mockUser.task,
+          id: user.id,
+          emoji: user.emoji,
+          name: user.name,
+          task: user.task,
           focusMinutes: Math.floor(Math.random() * 60) + 5,
           isHost: false,
           isMe: false,
-          status: Math.random() > 0.3 ? "studying" as const : "break" as const,
+          status: Math.random() > 0.25 ? "studying" as const : "break" as const,
         };
       }
       return {
@@ -131,7 +147,7 @@ export default function StudyRoomPage() {
             playCompleteSound();
             setShowCelebration(true);
             const completed = seats.filter((s) => s.status === "studying").length;
-            showToast(`专注完成！你和 ${completed - 1} 位虚拟学伴一起坚持了下来 🎉`, "success");
+            showToast(`专注完成！你和 ${completed - 1} 位学伴一起坚持了下来 🎉`, "success");
             setTimeout(() => setShowCelebration(false), 3000);
             setTimerMode("break");
             return 5 * 60;
@@ -146,27 +162,30 @@ export default function StudyRoomPage() {
     return () => clearInterval(interval);
   }, [timerRunning, inRoom, timerMode, seats, showToast]);
 
-  // 模拟其他用户发送鼓励语
+  // 真实用户发送鼓励语
   useEffect(() => {
     if (!inRoom) return;
     const interval = setInterval(() => {
-      if (Math.random() < 0.3) {
-        const user = MOCK_USERS[Math.floor(Math.random() * MOCK_USERS.length)];
+      if (Math.random() < 0.35) {
+        const activeSeats = seats.filter((s) => !s.isMe && s.status !== "empty");
+        if (activeSeats.length === 0) return;
+        const user = activeSeats[Math.floor(Math.random() * activeSeats.length)];
         const msg = ENCOURAGE_MSGS[Math.floor(Math.random() * ENCOURAGE_MSGS.length)];
-        const id = Date.now().toString();
-        setEncourageMsgs((prev) => [...prev, { id, emoji: user.emoji, msg }]);
+        const id = Date.now().toString() + Math.random();
+        setEncourageMsgs((prev) => [...prev, { id, emoji: user.emoji, msg, name: user.name }]);
         setTimeout(() => {
           setEncourageMsgs((prev) => prev.filter((m) => m.id !== id));
         }, 4000);
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [inRoom]);
+  }, [inRoom, seats]);
 
   const sendEncourage = (msg: string) => {
     playClickSound();
     const id = Date.now().toString();
-    setEncourageMsgs((prev) => [...prev, { id, emoji: "⭐", msg }]);
+    const currentUser = getCurrentUser();
+    setEncourageMsgs((prev) => [...prev, { id, emoji: "⭐", msg, name: currentUser?.username || "我" }]);
     setTimeout(() => {
       setEncourageMsgs((prev) => prev.filter((m) => m.id !== id));
     }, 4000);
@@ -196,7 +215,7 @@ export default function StudyRoomPage() {
               STUDY ROOM
             </h1>
             <p className="font-hand text-sm" style={{ color: "var(--text-muted)" }}>
-              🏫 一起学习 · 实时陪伴 · 集体番茄钟
+              🏫 一起学习 · 真实陪伴 · 集体番茄钟
             </p>
           </div>
 
@@ -242,7 +261,7 @@ export default function StudyRoomPage() {
             </ul>
             <div className="mt-3 pt-3 border-t" style={{ borderColor: "var(--divider)" }}>
               <p className="text-xs font-hand" style={{ color: "var(--text-muted)" }}>
-                💡 自习室为陪伴模式，虚拟学伴陪你一起学习。虽然不是真人，但专注的氛围和计时都是真实的。
+                💡 房间里都是注册过的真实用户，和你一起在学习的小伙伴。
               </p>
             </div>
           </div>
@@ -267,11 +286,11 @@ export default function StudyRoomPage() {
                 className="text-[10px] px-2 py-0.5 rounded-full font-hand"
                 style={{ background: "rgba(78,205,196,0.15)", color: "var(--color-neon-green)", border: "1px solid rgba(78,205,196,0.3)" }}
               >
-                陪伴模式
+                真实在线
               </span>
             </h2>
             <p className="text-xs font-hand flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
-              <Users className="w-3 h-3" /> 我（1人真实在线） + {studyingCount - 1} 位虚拟学伴
+              <Users className="w-3 h-3" /> {studyingCount} 人正在学习中
             </p>
           </div>
           <button
@@ -311,7 +330,7 @@ export default function StudyRoomPage() {
         {/* 座位区 */}
         <div className="glass-card rounded-xl p-4">
           <h3 className="font-hand text-xs font-bold mb-3" style={{ color: "var(--color-ink)" }}>
-            🪑 座位区
+            🪑 座位区（{seats.filter(s => s.status !== "empty").length} 人在线）
           </h3>
           <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
             {seats.map((seat) => (
@@ -380,7 +399,7 @@ export default function StudyRoomPage() {
                   style={{ background: "rgba(255,255,255,0.9)", color: "var(--color-ink)" }}
                 >
                   <span>{em.emoji}</span>
-                  <span>{em.msg}</span>
+                  <span>{em.name}：{em.msg}</span>
                 </motion.div>
               ))}
             </AnimatePresence>

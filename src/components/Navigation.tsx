@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,6 +22,8 @@ import {
   MessageCircle,
   Cat,
   Sparkles,
+  MoreHorizontal,
+  X,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/components/Toast";
@@ -45,6 +48,7 @@ const NAV_SECTIONS = [
   {
     title: "",
     items: [
+      { href: "/diary", label: "拖延日记", icon: BookOpen },
       { href: "/profile", label: "我的", icon: User },
       { href: "/settings", label: "设置", icon: Settings },
     ],
@@ -52,6 +56,13 @@ const NAV_SECTIONS = [
 ];
 
 const NAV_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
+
+const MOBILE_NAV_HIDDEN_ITEMS = NAV_ITEMS.filter(
+  (item) => ["/test", "/decode", "/diary", "/profile", "/settings"].includes(item.href)
+);
+const MOBILE_NAV_ITEMS = NAV_ITEMS.filter(
+  (item) => ["/", "/tasks", "/focus", "/community"].includes(item.href)
+);
 
 export function Navigation({
   collapsed = false,
@@ -64,6 +75,7 @@ export function Navigation({
   const router = useRouter();
   const { currentUser, logout } = useAppData();
   const { showToast } = useToast();
+  const [showMore, setShowMore] = useState(false);
 
   if (pathname === "/login") {
     return null;
@@ -180,6 +192,7 @@ export function Navigation({
                             item.href === "/studyroom" ? "studyroom" :
                             item.href === "/treehole" ? "treehole" :
                             item.href === "/partner" ? "partner" :
+                            item.href === "/diary" ? "diary" :
                             item.href === "/achievements" ? "achievements" : undefined
                           }
                           className={cn(
@@ -326,8 +339,8 @@ export function Navigation({
           borderColor: "var(--divider)",
         }}
       >
-        <div className="flex items-center justify-around px-1 py-2 overflow-x-auto">
-          {NAV_ITEMS.map((item) => {
+        <div className="flex items-center justify-around px-1 py-2">
+          {MOBILE_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -336,7 +349,7 @@ export function Navigation({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "relative flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg transition-all min-w-[56px]",
+                  "relative flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg transition-all flex-1",
                 )}
                 style={
                   isActive
@@ -357,8 +370,90 @@ export function Navigation({
               </Link>
             );
           })}
+          {/* 更多按钮 */}
+          <button
+            onClick={() => setShowMore(true)}
+            className={cn(
+              "relative flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg transition-all flex-1"
+            )}
+            style={
+              MOBILE_NAV_HIDDEN_ITEMS.some(
+                (item) => item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+              )
+                ? { color: "var(--color-neon-orange)" }
+                : { color: "var(--text-muted)" }
+            }
+          >
+            <MoreHorizontal className="w-[18px] h-[18px]" />
+            <span className="text-[10px] font-medium">更多</span>
+          </button>
         </div>
       </nav>
+
+      {/* 移动端更多菜单 */}
+      <AnimatePresence>
+        {showMore && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMore(false)}
+              className="md:hidden fixed inset-0 z-[60]"
+              style={{ background: "rgba(0,0,0,0.4)" }}
+            />
+            <motion.div
+              initial={{ y: 300 }}
+              animate={{ y: 0 }}
+              exit={{ y: 300 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="md:hidden fixed bottom-0 left-0 right-0 z-[61] rounded-t-2xl p-4 pb-6"
+              style={{
+                background: "var(--bg-primary)",
+                borderTop: "1px solid var(--divider)",
+              }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-hand text-sm font-bold" style={{ color: "var(--color-ink)" }}>
+                  更多功能
+                </h3>
+                <button onClick={() => setShowMore(false)} className="p-1 rounded-lg">
+                  <X className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                </button>
+              </div>
+              <div className="grid grid-cols-5 gap-2">
+                {MOBILE_NAV_HIDDEN_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive =
+                    item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setShowMore(false)}
+                      className="flex flex-col items-center gap-2 p-2 rounded-xl transition-all"
+                      style={{
+                        background: isActive ? "var(--color-apricot)" : "rgba(250,214,165,0.1)",
+                      }}
+                    >
+                      <Icon
+                        className="w-5 h-5"
+                        style={{ color: isActive ? "var(--color-neon-orange)" : "var(--color-ink)" }}
+                      />
+                      <span
+                        className="text-[10px] font-medium text-center"
+                        style={{ color: "var(--color-ink)" }}
+                      >
+                        {item.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }

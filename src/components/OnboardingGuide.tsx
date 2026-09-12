@@ -1,26 +1,26 @@
 "use client";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, ListTodo, Timer, BarChart3, ChevronRight, Sparkles } from "lucide-react";
+import { Brain, ListTodo, Timer, Sparkles, MessageCircle, ChevronRight, Users, Cat, BookOpen } from "lucide-react";
 import { getCurrentUser, markFirstLoginDone } from "@/lib/auth";
 
 const STEPS = [
   {
     selector: '[data-guide="dashboard"]',
     title: "仪表盘",
-    desc: "这里是你的每日总览，记录心情、查看统计、获取 AI 推荐的启动任务",
+    desc: "你的每日总览，记录心情、查看统计、获取今日推荐启动任务",
     icon: Sparkles,
   },
   {
-    selector: '[data-guide="test"]',
-    title: "人格测试",
-    desc: "8道题测出你的拖延人格类型，获得个性化建议",
+    selector: '[data-guide="decode"]',
+    title: "灵感拆解",
+    desc: "我们的核心功能！输入任务后 AI 会帮你拆解成小步骤，消除启动恐惧",
     icon: Brain,
   },
   {
     selector: '[data-guide="tasks"]',
     title: "任务管理",
-    desc: "创建任务后，AI 会自动拆解为子任务并评估阻力，帮你找到最低阻力的启动点",
+    desc: "管理所有任务，查看拆解结果，标记完成进度，紧急度自动计算",
     icon: ListTodo,
   },
   {
@@ -30,16 +30,22 @@ const STEPS = [
     icon: Timer,
   },
   {
-    selector: '[data-guide="diagnosis"]',
-    title: "数据诊断",
-    desc: "可视化你的拖延模式和趋势，了解自己才能改变自己",
-    icon: BarChart3,
+    selector: '[data-guide="studyroom"]',
+    title: "陪伴社区",
+    desc: "自习室、树洞、学伴——有人陪你一起学，不再孤单",
+    icon: Users,
+  },
+  {
+    selector: '[data-guide="test"]',
+    title: "人格测试",
+    desc: "8道题测出你的拖延人格类型，获得个性化建议",
+    icon: BookOpen,
   },
   {
     selector: '[data-guide="dog"]',
     title: "像素小狗",
     desc: "右下角的小狗会在你拖延时提醒你，点击它可以互动哦！",
-    icon: Sparkles,
+    icon: Cat,
   },
 ];
 
@@ -84,7 +90,6 @@ export function OnboardingGuide() {
 
   const handleNext = () => {
     if (stepIndex < STEPS.length - 1) {
-      // 先隐藏当前提示，等下一目标完成测量后再整体显示，避免位置闪烁。
       setTargetRect(null);
       setStepIndex(stepIndex + 1);
     } else {
@@ -105,17 +110,24 @@ export function OnboardingGuide() {
 
   const currentStep = STEPS[stepIndex];
   const Icon = currentStep.icon;
+  const hasTarget = targetRect !== null;
 
-  // 计算气泡位置
   const getBubbleStyle = (): React.CSSProperties => {
-    if (!targetRect) return { visibility: "hidden" };
+    if (!hasTarget || !targetRect) {
+      return {
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: 300,
+      };
+    }
     const rect = targetRect;
-    const bubbleWidth = 300;
+    const bubbleWidth = 320;
     const bubbleHeight = 180;
-    let top = rect.bottom + 12;
+    let top = rect.bottom + 16;
     let left = rect.left + rect.width / 2 - bubbleWidth / 2;
     if (top + bubbleHeight > window.innerHeight - 20) {
-      top = rect.top - bubbleHeight - 12;
+      top = rect.top - bubbleHeight - 16;
     }
     if (left < 20) left = 20;
     if (left + bubbleWidth > window.innerWidth - 20) left = window.innerWidth - bubbleWidth - 20;
@@ -124,25 +136,25 @@ export function OnboardingGuide() {
 
   return (
     <AnimatePresence>
-      {show && targetRect && (
+      {show && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[300]"
         >
-          {/* 使用 SVG mask 精确挖出目标区域，避免多边形自交造成整行变清晰 */}
+          {/* 使用 SVG mask 精确挖出目标区域，让框内内容变清晰 */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
             <defs>
               <mask id="onboarding-spotlight-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
                 <rect width="100%" height="100%" fill="white" />
-                {targetRect && (
+                {hasTarget && targetRect && (
                   <rect
-                    x={Math.max(0, targetRect.left - 6)}
-                    y={Math.max(0, targetRect.top - 6)}
-                    width={targetRect.width + 12}
-                    height={targetRect.height + 12}
-                    rx="10"
+                    x={Math.max(0, targetRect.left - 8)}
+                    y={Math.max(0, targetRect.top - 8)}
+                    width={targetRect.width + 16}
+                    height={targetRect.height + 16}
+                    rx="12"
                     fill="black"
                   />
                 )}
@@ -151,21 +163,21 @@ export function OnboardingGuide() {
             <rect
               width="100%"
               height="100%"
-              fill="rgba(0,0,0,0.64)"
+              fill="rgba(0,0,0,0.72)"
               mask="url(#onboarding-spotlight-mask)"
             />
           </svg>
 
-          {/* 高亮框 */}
-          {targetRect && (
+          {/* 高亮框 - 只有找到目标时显示 */}
+          {hasTarget && targetRect && (
             <div
-              className="absolute rounded-lg pointer-events-none"
+              className="absolute rounded-xl pointer-events-none"
               style={{
-                top: targetRect.top - 4,
-                left: targetRect.left - 4,
-                width: targetRect.width + 8,
-                height: targetRect.height + 8,
-                boxShadow: "0 0 0 4px var(--color-neon-orange), 0 0 20px rgba(255,107,53,0.4)",
+                top: targetRect.top - 6,
+                left: targetRect.left - 6,
+                width: targetRect.width + 12,
+                height: targetRect.height + 12,
+                boxShadow: "0 0 0 3px var(--color-neon-orange), 0 0 24px rgba(255,107,53,0.5)",
                 transition: "all 0.3s ease",
               }}
             />
@@ -181,13 +193,13 @@ export function OnboardingGuide() {
             style={{
               ...getBubbleStyle(),
               background: "var(--bg-primary)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
               border: "1px solid var(--divider)",
             }}
           >
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--color-neon-orange)" }}>
-                <Icon className="w-4 h-4 text-white" />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "var(--color-neon-orange)" }}>
+                <Icon className="w-4.5 h-4.5 text-white" />
               </div>
               <h3 className="font-hand text-base font-bold" style={{ color: "var(--color-ink)" }}>
                 {currentStep.title}

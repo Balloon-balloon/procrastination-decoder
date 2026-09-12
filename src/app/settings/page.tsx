@@ -8,7 +8,7 @@ import { isMuted, setMuted } from "@/lib/sound";
 import {
   Palette, Volume2, Timer, Bell, User, HelpCircle,
   Camera, Sun, Moon, ChevronRight, Trash2, LogOut, Edit3,
-  Send, Info, BookOpen,
+  Send, Info, BookOpen, Download, Upload, Database, Cpu,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { logoutUser } from "@/lib/auth";
@@ -54,6 +54,12 @@ export default function SettingsPage() {
   const [alarmSettingsLoaded, setAlarmSettingsLoaded] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [aiModel, setAiModel] = useState("deepseek");
+
+  useEffect(() => {
+    const savedModel = localStorage.getItem("pd-ai-model");
+    if (savedModel) setAiModel(savedModel);
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem("pd-timer-settings");
@@ -296,6 +302,90 @@ export default function SettingsPage() {
               style={{ background: "rgba(255,252,240,0.8)", border: "1px solid var(--divider)", color: "var(--text-primary)" }}
             />
           )}
+        </SectionCard>
+
+        {/* 数据管理 */}
+        <SectionCard icon={<Database className="w-4 h-4" />} title="数据管理">
+          <ActionRow
+            icon={<Download className="w-4 h-4" />}
+            label="导出全部数据"
+            onClick={() => {
+              const allData: Record<string, unknown> = {};
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key) {
+                  try {
+                    allData[key] = JSON.parse(localStorage.getItem(key) || '""');
+                  } catch {
+                    allData[key] = localStorage.getItem(key);
+                  }
+                }
+              }
+              const blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `whywait-backup-${new Date().toISOString().slice(0, 10)}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              showToast("数据已导出", "success");
+            }}
+          />
+          <ActionRow
+            icon={<Upload className="w-4 h-4" />}
+            label="导入数据备份"
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".json";
+              input.onchange = (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  try {
+                    const data = JSON.parse(reader.result as string);
+                    Object.entries(data).forEach(([key, value]) => {
+                      localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+                    });
+                    showToast("数据已导入，即将刷新...", "success");
+                    setTimeout(() => window.location.reload(), 1000);
+                  } catch {
+                    showToast("导入失败：文件格式错误", "error");
+                  }
+                };
+                reader.readAsText(file);
+              };
+              input.click();
+            }}
+          />
+          <p className="text-[10px] font-hand mt-2" style={{ color: "var(--text-muted)" }}>
+            导出包含所有任务、设置、专注记录等数据，可用于备份或迁移到其他设备
+          </p>
+        </SectionCard>
+
+        {/* AI 设置 */}
+        <SectionCard icon={<Cpu className="w-4 h-4" />} title="AI 设置">
+          <div>
+            <label className="text-xs font-hand" style={{ color: "var(--text-muted)" }}>AI 模型选择</label>
+            <select
+              value={aiModel}
+              onChange={(e) => {
+                setAiModel(e.target.value);
+                localStorage.setItem("pd-ai-model", e.target.value);
+                showToast("AI 模型已切换", "success");
+              }}
+              className="w-full mt-1 px-3 py-2 rounded-lg text-xs font-hand"
+              style={{ background: "rgba(255,252,240,0.8)", border: "1px solid var(--divider)", color: "var(--text-primary)" }}
+            >
+              <option value="deepseek">DeepSeek（默认，推荐）</option>
+              <option value="gpt-4o">GPT-4o（需配置 OpenAI Key）</option>
+              <option value="claude">Claude（需配置 Anthropic Key）</option>
+            </select>
+            <p className="text-[10px] font-hand mt-1.5" style={{ color: "var(--text-muted)" }}>
+              不同模型在拆解质量和响应速度上各有优势，当前默认使用 DeepSeek
+            </p>
+          </div>
         </SectionCard>
 
         {/* 账号与安全 */}

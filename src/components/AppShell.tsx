@@ -16,6 +16,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isLoginPage = pathname === "/login";
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    const checkWidth = () => setIsDesktop(window.innerWidth >= 768);
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
 
   // 路由切换时触发 PageLoader
   useEffect(() => {
@@ -117,13 +125,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <BackgroundSetup />
       <OnboardingGuide />
       <main
-        className="min-h-screen pb-20 md:pb-6 nav-collapse-transition relative z-10"
+        className="min-h-screen pb-20 md:pb-6 nav-collapse-transition relative z-10 md:ml-0"
         style={{
-          marginLeft: navCollapsed ? 0 : "256px",
-          transition: "margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          marginLeft: "0px",
         }}
       >
-        <div className="max-w-5xl mx-auto p-4 md:p-8 pt-16 md:pt-8">
+        <div
+          className="max-w-5xl mx-auto p-4 md:p-8 pt-16 md:pt-8"
+          style={{
+            marginLeft: isDesktop && !navCollapsed ? "256px" : "0px",
+            transition: "margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
           {children}
         </div>
       </main>
