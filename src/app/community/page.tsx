@@ -4,6 +4,7 @@ import { PageTransition, StaggerContainer, FadeInItem } from "@/components/Anima
 import { motion } from "framer-motion";
 import { UsersThree, Tree, Cat, CaretRight } from "@phosphor-icons/react";
 import { playClickSound } from "@/lib/sound";
+import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
 
 const STICKY_COLORS = [
   { bg: "var(--sticky-green)", rotate: "-1.5deg" },
@@ -68,7 +69,9 @@ export default function CommunityPage() {
 
         {/* 功能入口卡片 */}
         <StaggerContainer className="space-y-4" delay={0.2}>
-          {MODULES.map((mod, i) => {
+          {MODULES.filter(
+            (mod) => !(IS_STATIC_DEPLOYMENT && mod.href === "/partner")
+          ).map((mod, i) => {
             const Icon = mod.icon;
             return (
               <FadeInItem key={mod.href}>

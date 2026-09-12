@@ -34,6 +34,7 @@ import { PenLoader } from "@/components/PenLoader";
 import { CompletionMessage } from "@/components/CompletionMessage";
 import { playClickSound, playLaunchSound, playCompleteSound } from "@/lib/sound";
 import { TypewriterLogo } from "@/components/TypewriterLogo";
+import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
 
 const STICKY_COLORS = [
   { bg: "var(--sticky-yellow)", rotate: "-1.5deg" },
@@ -511,7 +512,11 @@ export default function DashboardPage() {
             { href: "/studyroom", icon: <UsersThree className="w-5 h-5" weight="duotone" />, title: "自习室", desc: "一起专注", color: 3 },
             { href: "/treehole", icon: <Tree className="w-5 h-5" weight="duotone" />, title: "树洞", desc: "匿名倾诉", color: 0 },
             { href: "/partner", icon: <Cat className="w-5 h-5" weight="fill" />, title: "学伴", desc: "互相监督", color: 1 },
-          ].map((card, i) => (
+          ]
+            .filter(
+              (card) => !(IS_STATIC_DEPLOYMENT && card.href === "/decode")
+            )
+            .map((card, i) => (
 
             <FadeInItem key={i}>
               <Link href={card.href} className="block">

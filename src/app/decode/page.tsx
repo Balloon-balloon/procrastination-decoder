@@ -31,7 +31,10 @@ import {
   Search,
 } from "lucide-react";
 import { useState, useRef } from "react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { playClickSound, playErrorSound } from "@/lib/sound";
+import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
 
 const STICKY_COLORS = [
   { bg: "var(--sticky-yellow)", rotate: "-1.5deg" },
@@ -51,8 +54,13 @@ export default function DecodePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
-  if (!loaded) {
+  useEffect(() => {
+    if (IS_STATIC_DEPLOYMENT) router.replace("/");
+  }, [router]);
+
+  if (!loaded || IS_STATIC_DEPLOYMENT) {
     return <PenLoader text="loading" />;
   }
 

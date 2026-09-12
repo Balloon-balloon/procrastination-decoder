@@ -1,5 +1,6 @@
 import { User, AuthState } from "./types";
 import { apiRequest } from "./api";
+import { IS_STATIC_DEPLOYMENT } from "./deployment";
 
 const AUTH_STORAGE_KEY = "procrastination-decoder-auth";
 const USER_DATA_PREFIX = "procrastination-decoder-user-";
@@ -71,7 +72,7 @@ function clientRegister(username: string, email: string, password: string): Auth
     username,
     email,
     password,
-    verified: false,
+    verified: IS_STATIC_DEPLOYMENT,
     isFirstLogin: true,
     createdAt: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(),
@@ -84,7 +85,7 @@ function clientRegister(username: string, email: string, password: string): Auth
     success: true,
     message: "注册成功（演示模式）",
     user,
-    requiresVerification: true,
+    requiresVerification: !IS_STATIC_DEPLOYMENT,
     verificationCode: code,
   };
 }
@@ -172,6 +173,9 @@ export async function registerUserWithEmail(
   captchaAnswer?: number,
   captchaExpected?: number,
 ): Promise<AuthResult> {
+  if (IS_STATIC_DEPLOYMENT) {
+    return clientRegister(username, email, password);
+  }
   try {
     const result = await apiRequest<AuthResult>("/api/auth/register", {
       method: "POST",
@@ -186,6 +190,9 @@ export async function registerUserWithEmail(
 }
 
 export async function loginUser(identifier: string, password: string): Promise<AuthResult> {
+  if (IS_STATIC_DEPLOYMENT) {
+    return clientLogin(identifier, password);
+  }
   try {
     let result = await apiRequest<AuthResult>("/api/auth/login", {
       method: "POST",

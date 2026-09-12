@@ -19,6 +19,7 @@ import { EstimatedTimeUnit, Task, SubTask } from "@/lib/types";
 import { formatDate, getEffectivePriority } from "@/lib/utils";
 import { formatEstimatedTime } from "@/lib/time";
 import { TaskBreakdownResult } from "@/components/TaskBreakdownResult";
+import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
 import { PageTransition, StaggerContainer, FadeInItem, HoverCard } from "@/components/Animations";
 import {
   Plus,
@@ -900,7 +901,7 @@ function TaskCard({
           )}
 
           {/* 拆解失败状态 */}
-          {expanded && task.breakdownStatus === "failed" && (
+          {!IS_STATIC_DEPLOYMENT && expanded && task.breakdownStatus === "failed" && (
             <div className="mt-4 p-4 glass-card rounded-xl text-center">
               <p className="text-sm text-red-400 mb-2">拆解失败了</p>
               <button
@@ -921,7 +922,7 @@ function TaskCard({
                 开始
               </button>
             )}
-            {task.status !== "completed" && (
+            {!IS_STATIC_DEPLOYMENT && task.status !== "completed" && (
               <a
                 href={`/focus?taskId=${task.id}`}
                 className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors flex items-center gap-1"

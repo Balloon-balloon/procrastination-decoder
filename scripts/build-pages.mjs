@@ -15,6 +15,7 @@ const child = spawn(nextBinary, ["build"], {
   env: {
     ...process.env,
     GITHUB_PAGES: "true",
+    NEXT_PUBLIC_STATIC_MODE: "true",
   },
   stdio: "inherit",
   shell: process.platform === "win32",

@@ -6,6 +6,7 @@ import { getWeekDates } from "@/lib/utils";
 import { PageTransition } from "@/components/Animations";
 import { PERSONALITY_TYPES } from "@/lib/personality";
 import { ProcrastinationType, ResistanceType } from "@/lib/types";
+import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
 import {
   BarChart,
   Bar,
@@ -340,6 +341,7 @@ export default function DiagnosisPage() {
       </div>
 
       {/* AI 深度洞察 */}
+      {!IS_STATIC_DEPLOYMENT && (
       <div className="glass-card rounded-2xl p-6 border border-gradient-to-r from-accent-500/20 to-purple-500/20" style={{ borderColor: "rgba(168, 85, 247, 0.3)", background: "linear-gradient(135deg, rgba(249, 115, 22, 0.05), rgba(168, 85, 247, 0.05))" }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -459,6 +461,7 @@ export default function DiagnosisPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Weekly Trend */}
       <div className="glass-card rounded-2xl p-6">

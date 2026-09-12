@@ -24,6 +24,7 @@ import {
 } from "@phosphor-icons/react";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/components/Toast";
+import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
 
 const NAV_SECTIONS = [
   {
@@ -51,7 +52,14 @@ const NAV_SECTIONS = [
       { href: "/settings", label: "设置", icon: GearSix },
     ],
   },
-];
+]
+  .map((section) => ({
+    ...section,
+    items: section.items.filter(
+      (item) => !(IS_STATIC_DEPLOYMENT && item.href === "/decode")
+    ),
+  }))
+  .filter((section) => section.items.length > 0);
 
 const NAV_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
 

@@ -5,6 +5,7 @@ import { PageTransition, StaggerContainer, FadeInItem } from "@/components/Anima
 import { UserX, UserCheck, Bell, CheckCircle2, ChevronRight, Zap, Target, Clock, Unlink } from "lucide-react";
 import { playClickSound, playCompleteSound } from "@/lib/sound";
 import { useToast } from "@/components/Toast";
+import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
 import { useAppData } from "@/hooks/useAppData";
 import { apiRequest } from "@/lib/api";
 
@@ -107,6 +108,12 @@ export default function PartnerPage() {
     setMatching(true);
     setSecondsRemaining(MATCH_TIMEOUT_SECONDS);
     setShowSetup(false);
+
+    if (IS_STATIC_DEPLOYMENT) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      finishMatch(chooseVirtualPartner());
+      return;
+    }
 
     if (!currentUser) {
       await new Promise((resolve) => setTimeout(resolve, 800));
@@ -280,7 +287,9 @@ export default function PartnerPage() {
             STUDY PARTNER
           </h1>
           <p className="font-hand text-sm" style={{ color: "var(--text-muted)" }}>
-            🤝 真人匹配等待 1 分钟 · 超时后虚拟陪伴
+            {IS_STATIC_DEPLOYMENT
+              ? "🐾 虚拟学伴 · 随时陪伴"
+              : "🤝 真人匹配等待 1 分钟 · 超时后虚拟陪伴"}
           </p>
           <p className="font-hand text-xs mt-1" style={{ color: currentUser ? "var(--color-neon-green)" : "var(--color-neon-orange)" }}>
             {currentUser ? `当前账号：${currentUser.username}` : "当前未登录，只能使用虚拟学伴"}
@@ -497,7 +506,7 @@ export default function PartnerPage() {
               </div>
             </div>
 
-            {matched.kind === "virtual" && currentUser && (
+            {!IS_STATIC_DEPLOYMENT && matched.kind === "virtual" && currentUser && (
               <button
                 onClick={handleRematch}
                 className="btn-neon w-full text-sm font-hand flex items-center justify-center gap-2 py-3"
