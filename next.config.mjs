@@ -1,10 +1,12 @@
 /** @type {import('next').NextConfig} */
-const isProd = process.env.NODE_ENV === "production";
+const isGithubPages = process.env.GITHUB_PAGES === "true";
 
 const nextConfig = {
   reactStrictMode: true,
-  output: "export",
-  basePath: isProd ? "/procrastination-decoder" : "",
+  output: isGithubPages ? "export" : undefined,
+  basePath: isGithubPages ? "/procrastination-decoder" : "",
+  trailingSlash: isGithubPages,
+  assetPrefix: isGithubPages ? "/procrastination-decoder" : undefined,
   images: {
     unoptimized: true,
   },

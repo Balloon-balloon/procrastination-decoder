@@ -33,7 +33,7 @@ jobs:
       - name: Build with Next.js
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: npm run build
+        run: npm run build:pages
 
       - name: Add .nojekyll
         run: touch out/.nojekyll
