@@ -20,6 +20,7 @@ import { formatDate, getEffectivePriority } from "@/lib/utils";
 import { formatEstimatedTime } from "@/lib/time";
 import { TaskBreakdownResult } from "@/components/TaskBreakdownResult";
 import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
+import { requestBreakdown } from "@/lib/breakdown-fallback";
 import { PageTransition, StaggerContainer, FadeInItem, HoverCard } from "@/components/Animations";
 import {
   Plus,
@@ -679,7 +680,6 @@ export default function TasksPage() {
                   update((prev) => updateTask(prev, task.id, { status: "in-progress" }))
                 }
                 onBreakdown={async () => {
-                  // 设置loading状态
                   update((prev) => setTaskBreakdownStatus(prev, task.id, "loading"));
                   try {
                     const personality = data.profile.personalityResult;
@@ -687,19 +687,14 @@ export default function TasksPage() {
                       ?.filter((a) => a.content)
                       .map((a) => `【${a.name}】${a.content}`)
                       .join("\n") || undefined;
-                    const res = await fetch("/api/breakdown", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        taskTitle: task.title,
-                        taskDescription: task.description,
-                        personalityType: personality?.type,
-                        personalityName: personality?.typeName,
-                        fileSummary,
-                        dueDate: task.dueDate || undefined,
-                      }),
+                    const result = await requestBreakdown({
+                      taskTitle: task.title,
+                      taskDescription: task.description,
+                      personalityType: personality?.type,
+                      personalityName: personality?.typeName,
+                      fileSummary,
+                      dueDate: task.dueDate || undefined,
                     });
-                    const result = await res.json();
                     if (result.subTasks) {
                       update((prev) => {
                         let newData = addSubTasks(prev, task.id, result.subTasks);
@@ -716,6 +711,7 @@ export default function TasksPage() {
                         );
                         return newData;
                       });
+                      showToast("AI 拆解完成！", "success");
                     } else {
                       update((prev) => setTaskBreakdownStatus(prev, task.id, "failed"));
                     }
@@ -901,7 +897,7 @@ function TaskCard({
           )}
 
           {/* 拆解失败状态 */}
-          {!IS_STATIC_DEPLOYMENT && expanded && task.breakdownStatus === "failed" && (
+          {expanded && task.breakdownStatus === "failed" && (
             <div className="mt-4 p-4 glass-card rounded-xl text-center">
               <p className="text-sm text-red-400 mb-2">拆解失败了</p>
               <button

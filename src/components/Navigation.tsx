@@ -56,7 +56,7 @@ const NAV_SECTIONS = [
   .map((section) => ({
     ...section,
     items: section.items.filter(
-      (item) => !(IS_STATIC_DEPLOYMENT && item.href === "/decode")
+      (item) => !(IS_STATIC_DEPLOYMENT && item.href === "/partner")
     ),
   }))
   .filter((section) => section.items.length > 0);

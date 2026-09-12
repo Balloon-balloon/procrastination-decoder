@@ -35,6 +35,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { playClickSound, playErrorSound } from "@/lib/sound";
 import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
+import { requestBreakdown } from "@/lib/breakdown-fallback";
 
 const STICKY_COLORS = [
   { bg: "var(--sticky-yellow)", rotate: "-1.5deg" },
@@ -57,10 +58,10 @@ export default function DecodePage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (IS_STATIC_DEPLOYMENT) router.replace("/");
+    if (IS_STATIC_DEPLOYMENT) return;
   }, [router]);
 
-  if (!loaded || IS_STATIC_DEPLOYMENT) {
+  if (!loaded) {
     return <PenLoader text="loading" />;
   }
 
@@ -105,18 +106,13 @@ export default function DecodePage() {
         .map((a) => `【${a.name}】${a.content}`)
         .join("\n") || undefined;
 
-      const res = await fetch("/api/breakdown", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskTitle,
-          taskDescription,
-          personalityType: personality?.type,
-          personalityName: personality?.typeName,
-          fileSummary,
-        }),
+      const result = await requestBreakdown({
+        taskTitle,
+        taskDescription,
+        personalityType: personality?.type,
+        personalityName: personality?.typeName,
+        fileSummary,
       });
-      const result = await res.json();
       if (result.subTasks) {
         update((prev) => {
           let newData = addSubTasks(prev, taskId, result.subTasks);
