@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { PageTransition, StaggerContainer, FadeInItem } from "@/components/Animations";
 import { motion } from "framer-motion";
-import { Users, MessageCircle, Cat, ChevronRight } from "lucide-react";
+import { UsersThree, Tree, Cat, CaretRight } from "@phosphor-icons/react";
 import { playClickSound } from "@/lib/sound";
 
 const STICKY_COLORS = [
@@ -14,7 +14,7 @@ const STICKY_COLORS = [
 const MODULES = [
   {
     href: "/studyroom",
-    icon: Users,
+    icon: UsersThree,
     title: "自习室",
     desc: "一起专注，互相陪伴的线上自习空间",
     tag: "实时陪伴",
@@ -22,10 +22,10 @@ const MODULES = [
   },
   {
     href: "/treehole",
-    icon: MessageCircle,
+    icon: Tree,
     title: "树洞",
-    desc: "匿名倾诉，说说话，释放你的压力",
-    tag: "匿名聊天",
+    desc: "匿名倾诉，把压力和拖延故事留在这里",
+    tag: "匿名树洞",
     color: 1,
   },
   {
@@ -53,7 +53,7 @@ export default function CommunityPage() {
               className="w-12 h-12 rounded-2xl flex items-center justify-center"
               style={{ background: "var(--color-neon-green)" }}
             >
-              <Users className="w-7 h-7 text-white" />
+              <UsersThree className="w-7 h-7 text-[#F5F7FF]" weight="fill" />
             </div>
             <div>
               <h1 className="font-sketch text-3xl font-bold" style={{ color: "var(--color-ink)" }}>
@@ -66,70 +66,61 @@ export default function CommunityPage() {
           </motion.div>
         </div>
 
-        {/* 三个模块卡片 */}
-        <StaggerContainer className="space-y-4" delay={0.1}>
+        {/* 功能入口卡片 */}
+        <StaggerContainer className="space-y-4" delay={0.2}>
           {MODULES.map((mod, i) => {
             const Icon = mod.icon;
             return (
               <FadeInItem key={mod.href}>
                 <Link
                   href={mod.href}
-                  onClick={() => playClickSound()}
+                  onClick={playClickSound}
                   className="block"
                 >
-                  <div
-                    className="sticky-note p-5 cursor-pointer"
+                  <motion.div
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="sticky-note relative p-5 cursor-pointer overflow-hidden"
                     style={{
                       background: STICKY_COLORS[mod.color].bg,
                       transform: `rotate(${STICKY_COLORS[mod.color].rotate})`,
                     }}
                   >
+                    {/* 标签 */}
+                    <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-hand font-bold"
+                      style={{ background: "rgba(255,255,255,0.5)", color: "var(--color-ink)" }}
+                    >
+                      {mod.tag}
+                    </div>
+
                     <div className="flex items-center gap-4">
                       <div
-                        className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: "rgba(43,58,103,0.08)" }}
+                        className="doodle-icon-sticker w-12 h-12 flex-shrink-0"
+                        style={{ background: "rgba(255,255,255,0.4)" }}
                       >
-                        <Icon className="w-7 h-7" style={{ color: "var(--color-ink)" }} />
+                        <Icon className="w-6 h-6" weight="duotone" style={{ color: "var(--color-ink)" }} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-lg font-bold" style={{ color: "var(--color-ink)" }}>
-                            {mod.title}
-                          </h3>
-                          <span
-                            className="text-[10px] px-2 py-0.5 rounded-full font-bold"
-                            style={{
-                              background: "var(--color-neon-orange)",
-                              color: "#fff",
-                            }}
-                          >
-                            {mod.tag}
-                          </span>
-                        </div>
-                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                      <div className="flex-1">
+                        <h2 className="font-hand text-lg font-bold mb-1" style={{ color: "var(--color-ink)" }}>
+                          {mod.title}
+                        </h2>
+                        <p className="font-hand text-xs" style={{ color: "var(--text-secondary)" }}>
                           {mod.desc}
                         </p>
                       </div>
-                      <ChevronRight className="w-5 h-5 flex-shrink-0" style={{ color: "var(--color-ink)" }} />
+                      <CaretRight className="w-5 h-5 flex-shrink-0" weight="bold" style={{ color: "var(--color-ink)" }} />
                     </div>
-                  </div>
+                  </motion.div>
                 </Link>
               </FadeInItem>
             );
           })}
         </StaggerContainer>
 
-        {/* 底部鼓励语 */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-center py-4"
-        >
-          <p className="font-handwritten text-sm" style={{ color: "var(--text-muted)" }}>
-            一个人走得快，一群人走得远 ✨
-          </p>
-        </motion.div>
+        {/* 底部说明 */}
+        <p className="text-center text-[10px] font-hand pt-4" style={{ color: "var(--text-muted)" }}>
+          🌳 陪伴社区 · 一起告别拖延
+        </p>
       </div>
     </PageTransition>
   );

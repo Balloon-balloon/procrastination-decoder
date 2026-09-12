@@ -38,6 +38,16 @@ export default function TestPage() {
       score: result.scores[key],
     }));
 
+    const activeTasks = data.tasks.filter((t) => t.status !== "completed").slice(0, 2);
+    const taskName = activeTasks[0]?.title;
+    const personalizedSuggestions = taskName
+      ? result.suggestions.map((s, i) => {
+          if (i === 0) return `${s} —— 试试从「${taskName}」开始`;
+          if (i === 1 && activeTasks[1]) return `对于「${activeTasks[1].title}」，${s}`;
+          return s;
+        })
+      : result.suggestions;
+
     return (
       <PageTransition>
       <div className="space-y-6 max-w-2xl mx-auto">
@@ -72,9 +82,16 @@ export default function TestPage() {
         </div>
 
         <div className="glass-card rounded-2xl p-6">
-          <h3 className="text-sm font-bold text-white mb-3">破解建议</h3>
+          <h3 className="text-sm font-bold text-white mb-1">
+            给{info.name}的{taskName ? "实战" : ""}破解建议
+          </h3>
+          {taskName && (
+            <p className="text-xs text-dark-500 mb-3">
+              已结合你的任务「{taskName}{activeTasks[1] ? `」「${activeTasks[1].title}` : ""}」定制
+            </p>
+          )}
           <div className="space-y-2">
-            {result.suggestions.map((s, i) => (
+            {personalizedSuggestions.map((s, i) => (
               <div key={i} className="flex items-start gap-2 text-sm text-dark-300">
                 <span className="text-accent-400 font-bold mt-0.5">{i + 1}.</span>
                 <span>{s}</span>

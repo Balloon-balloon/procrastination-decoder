@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "WhyWait 拖延拦截器",
+  "version": "0.2.0",
+  "description": "检测持续逃避行为，用 WhyWait 行动救援台把一个任务缩小到 5 分钟。",
+  "permissions": [
+    "alarms",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "WhyWait 拖延拦截器",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

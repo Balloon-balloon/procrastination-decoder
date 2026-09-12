@@ -7,20 +7,25 @@ import { formatTime } from "@/lib/utils";
 import {
   Brain,
   Timer,
-  ListTodo,
-  Sparkles,
-  TrendingUp,
-  Flame,
+  ListChecks,
+  Sparkle,
+  TrendUp,
+  Fire,
   Target,
-  Zap,
-  ChevronRight,
+  Lightning,
+  CaretRight,
   Play,
   Rocket,
   Clock,
-  Users,
-  MessageCircle,
+  UsersThree,
+  Tree,
   Cat,
-} from "lucide-react";
+  Smiley,
+  SmileyWink,
+  SmileyMeh,
+  SmileySad,
+  SmileyNervous,
+} from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { PageTransition, StaggerContainer, FadeInItem } from "@/components/Animations";
@@ -62,11 +67,11 @@ export default function DashboardPage() {
   };
 
   const MOOD_CONFIG = {
-    great: { emoji: "😄", label: "超棒" },
-    good: { emoji: "🙂", label: "不错" },
-    okay: { emoji: "😐", label: "一般" },
-    bad: { emoji: "😔", label: "不好" },
-    terrible: { emoji: "😢", label: "糟糕" },
+    great: { icon: Smiley, label: "超棒", color: "#F5B942" },
+    good: { icon: SmileyWink, label: "不错", color: "#4ECDC4" },
+    okay: { icon: SmileyMeh, label: "一般", color: "#7DD3FC" },
+    bad: { icon: SmileySad, label: "不好", color: "#A78BFA" },
+    terrible: { icon: SmileyNervous, label: "糟糕", color: "#FF6B35" },
   };
 
   const PRIORITY_COLORS = {
@@ -195,7 +200,21 @@ export default function DashboardPage() {
           </div>
           {todayMood ? (
             <div className="flex items-center gap-3 py-2">
-              <div className="text-3xl">{MOOD_CONFIG[todayMood.mood as keyof typeof MOOD_CONFIG].emoji}</div>
+              {(() => {
+                const MoodIcon =
+                  MOOD_CONFIG[todayMood.mood as keyof typeof MOOD_CONFIG].icon;
+                return (
+                  <div
+                    className="doodle-icon-sticker w-14 h-14"
+                    style={{
+                      color: MOOD_CONFIG[todayMood.mood as keyof typeof MOOD_CONFIG].color,
+                      background: "rgba(255,255,255,.5)",
+                    }}
+                  >
+                    <MoodIcon className="w-8 h-8" weight="duotone" />
+                  </div>
+                );
+              })()}
               <div>
                 <p className="text-sm font-bold" style={{ color: "var(--color-ink)" }}>
                   {MOOD_CONFIG[todayMood.mood as keyof typeof MOOD_CONFIG].label}
@@ -218,7 +237,20 @@ export default function DashboardPage() {
                   className="flex-1 flex flex-col items-center gap-1 py-3 rounded-lg transition-all group hover:scale-105"
                 >
                   <span className="text-2xl group-hover:scale-110 transition-transform">
-                    {MOOD_CONFIG[mood].emoji}
+                    {(() => {
+                      const MoodIcon = MOOD_CONFIG[mood].icon;
+                      return (
+                        <span
+                          className="doodle-icon-sticker w-11 h-11 mx-auto"
+                          style={{
+                            color: MOOD_CONFIG[mood].color,
+                            background: "rgba(255,255,255,.52)",
+                          }}
+                        >
+                          <MoodIcon className="w-6 h-6" weight="duotone" />
+                        </span>
+                      );
+                    })()}
                   </span>
                   <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
                     {MOOD_CONFIG[mood].label}
@@ -261,7 +293,7 @@ export default function DashboardPage() {
                 className="text-xs flex items-center gap-1 whitespace-nowrap"
                 style={{ color: "var(--color-neon-orange)" }}
               >
-                重测 <ChevronRight className="w-3 h-3" />
+                重测 <CaretRight className="w-3 h-3" weight="bold" />
               </Link>
             </div>
           </div>
@@ -276,7 +308,7 @@ export default function DashboardPage() {
                   className="w-12 h-12 rounded-xl flex items-center justify-center"
                   style={{ background: "var(--color-apricot)" }}
                 >
-                  <Brain className="w-6 h-6" style={{ color: "var(--color-ink)" }} />
+                  <Brain className="w-6 h-6" weight="duotone" style={{ color: "var(--color-ink)" }} />
                 </div>
                 <div className="flex-1">
                   <h2 className="font-pixel text-xs mb-1" style={{ color: "var(--color-ink)" }}>
@@ -286,7 +318,7 @@ export default function DashboardPage() {
                     8道题，2分钟，发现你的拖延模式
                   </p>
                 </div>
-                <ChevronRight className="w-5 h-5" style={{ color: "var(--color-ink)" }} />
+                <CaretRight className="w-5 h-5" weight="bold" style={{ color: "var(--color-ink)" }} />
               </div>
             </div>
           </Link>
@@ -295,10 +327,10 @@ export default function DashboardPage() {
         {/* 统计卡片 - 便签纸错落 */}
         <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-4" delay={0.15}>
           {[
-            { icon: <Flame className="w-5 h-5" />, label: "连续天数", value: `${stats.streak}`, unit: "天", color: 0 },
-            { icon: <Target className="w-5 h-5" />, label: "已完成", value: `${stats.completedTasks}`, unit: `/${stats.totalTasks}`, color: 3 },
-            { icon: <Timer className="w-5 h-5" />, label: "专注时长", value: `${stats.focusMin}`, unit: "分", color: 2 },
-            { icon: <TrendingUp className="w-5 h-5" />, label: "完成率", value: `${stats.completionRate}`, unit: "%", color: 1 },
+            { icon: <Fire className="w-5 h-5" weight="fill" />, label: "连续天数", value: `${stats.streak}`, unit: "天", color: 0 },
+            { icon: <Target className="w-5 h-5" weight="duotone" />, label: "已完成", value: `${stats.completedTasks}`, unit: `/${stats.totalTasks}`, color: 3 },
+            { icon: <Timer className="w-5 h-5" weight="duotone" />, label: "专注时长", value: `${stats.focusMin}`, unit: "分", color: 2 },
+            { icon: <TrendUp className="w-5 h-5" weight="bold" />, label: "完成率", value: `${stats.completionRate}`, unit: "%", color: 1 },
           ].map((stat, i) => (
             <FadeInItem key={i}>
               <div
@@ -308,7 +340,7 @@ export default function DashboardPage() {
                   transform: `rotate(${STICKY_COLORS[stat.color].rotate})`,
                 }}
               >
-                <div className="mb-2" style={{ color: "var(--color-ink)" }}>
+                <div className="doodle-icon-sticker w-10 h-10 mb-3" style={{ color: "var(--color-ink)", background: "rgba(255,255,255,.42)" }}>
                   {stat.icon}
                 </div>
                 <div className="text-2xl font-bold" style={{ color: "var(--color-ink)" }}>
@@ -330,7 +362,7 @@ export default function DashboardPage() {
           <div className="sticky-note spotlight-card p-6" style={{ background: "var(--sticky-orange)", transform: "rotate(-0.8deg)" }}>
             <div className="relative">
               <div className="flex items-center gap-2 mb-3">
-                <Rocket className="w-4 h-4" style={{ color: "var(--color-neon-orange)" }} />
+                <Rocket className="w-4 h-4" weight="fill" style={{ color: "var(--color-neon-orange)" }} />
                 <span className="font-pixel text-[10px]" style={{ color: "var(--color-neon-orange)" }}>
                   START NOW
                 </span>
@@ -376,7 +408,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <button onClick={handleStartFocus} className="btn-neon w-full flex items-center justify-center gap-2 text-sm">
-                <Play className="w-4 h-4" />
+                <Play className="w-4 h-4" weight="fill" />
                 现在就开始（{recommendedStart.subTask.estimatedMinutes}分钟）
               </button>
             </div>
@@ -391,7 +423,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: "var(--color-ink)" }}>
-                <ListTodo className="w-4 h-4" style={{ color: "var(--color-neon-green)" }} />
+                <ListChecks className="w-4 h-4" weight="duotone" style={{ color: "var(--color-neon-green)" }} />
                 今日待办
               </h3>
               <Link
@@ -399,7 +431,7 @@ export default function DashboardPage() {
                 className="text-xs flex items-center gap-1"
                 style={{ color: "var(--color-neon-orange)" }}
               >
-                查看全部 <ChevronRight className="w-3 h-3" />
+                查看全部 <CaretRight className="w-3 h-3" weight="bold" />
               </Link>
             </div>
             <div className="space-y-2">
@@ -436,10 +468,10 @@ export default function DashboardPage() {
         {/* 功能入口 - 便签纸卡片 */}
         <StaggerContainer className="grid md:grid-cols-2 gap-4" delay={0.35}>
           {[
-            { href: "/tasks", icon: <ListTodo className="w-6 h-6" />, title: "任务管理", desc: "创建、追踪、分析你的任务完成模式", color: 3 },
-            { href: "/focus", icon: <Zap className="w-6 h-6" />, title: "专注模式", desc: "番茄钟 + 深度工作，告别拖延", color: 0 },
-            { href: "/decode", icon: <Sparkles className="w-6 h-6" />, title: "灵感拆解", desc: "AI 驱动，把大任务拆成可执行小步骤", color: 1 },
-            { href: "/community", icon: <Users className="w-6 h-6" />, title: "陪伴社区", desc: "自习室、树洞、学伴，一起告别拖延", color: 2 },
+            { href: "/tasks", icon: <ListChecks className="w-6 h-6" weight="duotone" />, title: "任务管理", desc: "列个清单，打勾的时候超爽的 📝", color: 3 },
+            { href: "/focus", icon: <Lightning className="w-6 h-6" weight="fill" />, title: "专注模式", desc: "番茄钟一开，全世界都安静了 ⏰", color: 0 },
+            { href: "/decode", icon: <Sparkle className="w-6 h-6" weight="fill" />, title: "灵感拆解", desc: "把\"我不想做\"变成\"我已经做了一半\" ✨", color: 1 },
+            { href: "/community", icon: <UsersThree className="w-6 h-6" weight="duotone" />, title: "陪伴社区", desc: "有人陪你一起卷，拖延都没了 🤝", color: 2 },
           ].map((card, i) => (
             <FadeInItem key={i}>
               <Link href={card.href} className="block">
@@ -452,7 +484,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center gap-4">
                     <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center"
+                      className="doodle-icon-sticker w-12 h-12"
                       style={{ background: "rgba(43, 58, 103, 0.08)" }}
                     >
                       <span style={{ color: "var(--color-ink)" }}>{card.icon}</span>
@@ -465,7 +497,7 @@ export default function DashboardPage() {
                         {card.desc}
                       </p>
                     </div>
-                    <ChevronRight className="w-5 h-5" style={{ color: "var(--color-ink)" }} />
+                    <CaretRight className="w-5 h-5" weight="bold" style={{ color: "var(--color-ink)" }} />
                   </div>
                 </div>
               </Link>
@@ -476,9 +508,9 @@ export default function DashboardPage() {
         {/* 陪伴社区入口 - 三卡片 */}
         <StaggerContainer className="grid grid-cols-3 gap-3" delay={0.5}>
           {[
-            { href: "/studyroom", icon: <Users className="w-5 h-5" />, title: "自习室", desc: "一起专注", color: 3 },
-            { href: "/treehole", icon: <MessageCircle className="w-5 h-5" />, title: "树洞", desc: "匿名倾诉", color: 0 },
-            { href: "/partner", icon: <Cat className="w-5 h-5" />, title: "学伴", desc: "互相监督", color: 1 },
+            { href: "/studyroom", icon: <UsersThree className="w-5 h-5" weight="duotone" />, title: "自习室", desc: "一起专注", color: 3 },
+            { href: "/treehole", icon: <Tree className="w-5 h-5" weight="duotone" />, title: "树洞", desc: "匿名倾诉", color: 0 },
+            { href: "/partner", icon: <Cat className="w-5 h-5" weight="fill" />, title: "学伴", desc: "互相监督", color: 1 },
           ].map((card, i) => (
 
             <FadeInItem key={i}>
@@ -491,7 +523,7 @@ export default function DashboardPage() {
                   }}
                 >
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
+                    className="doodle-icon-sticker w-10 h-10 mx-auto mb-2"
                     style={{ background: "rgba(43,58,103,0.08)" }}
                   >
                     <span style={{ color: "var(--color-ink)" }}>{card.icon}</span>

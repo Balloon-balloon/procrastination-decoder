@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhyWait 拖延拦截器</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <header>
+        <div>
+          <p class="brand">WHYWAIT</p>
+          <h1>拖延拦截器</h1>
+        </div>
+        <label class="switch" aria-label="启用拦截器">
+          <input id="enabled" type="checkbox" />
+          <span></span>
+        </label>
+      </header>
+
+      <section class="stats">
+        <div>
+          <span>今日拦截</span>
+          <strong id="today-count">0</strong>
+        </div>
+        <div>
+          <span>当前站点</span>
+          <strong id="active-host">未检测</strong>
+        </div>
+      </section>
+
+      <section class="pet-setting">
+        <div>
+          <strong>网页小精灵</strong>
+          <span>关闭 WhyWait 页面后继续监督</span>
+        </div>
+        <label class="switch" aria-label="显示网页小精灵">
+          <input id="pet-enabled" type="checkbox" />
+          <span></span>
+        </label>
+      </section>
+
+      <label>
+        <span>连续停留多久后介入</span>
+        <div class="inline">
+          <input id="threshold" type="number" min="1" max="60" />
+          <em>分钟</em>
+        </div>
+      </label>
+
+      <label>
+        <span>当前要拯救的任务</span>
+        <input id="task-title" type="text" />
+      </label>
+
+      <label>
+        <span>第一个微行动</span>
+        <input id="micro-step" type="text" />
+      </label>
+
+      <label>
+        <span>救援阶梯，每行一个动作</span>
+        <textarea id="rescue-ladder" rows="4"></textarea>
+      </label>
+
+      <label>
+        <span>容易拖延的网站，每行一个域名</span>
+        <textarea id="sites" rows="4"></textarea>
+      </label>
+
+      <label>
+        <span>WhyWait 救援页地址</span>
+        <input id="app-url" type="url" />
+      </label>
+
+      <div class="actions">
+        <button id="save" class="primary" type="button">保存设置</button>
+        <button id="test" type="button">测试拦截</button>
+      </div>
+
+      <button id="open-rescue" class="wide secondary" type="button">
+        打开行动救援台
+      </button>
+
+      <p id="status" class="status">正在读取本地设置...</p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

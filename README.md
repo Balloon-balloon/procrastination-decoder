@@ -1,5 +1,17 @@
 # whywait
 
+## 行动救援网络
+
+项目现在包含三个可以独立演示的新层次：
+
+- `browser-extension/`：检测持续逃避行为并弹出 5 分钟微行动，本地保存设置和统计。
+- 网页小精灵：关闭 WhyWait 页面后，扩展会在其他网页保留一个可拖动的小精灵，展示停留时间并在达到阈值时提示行动。
+- `/rescue`：行动救援台，支持自动缩小目标、5 分钟计时、完成后回写任务与专注数据。
+- `skills/whywait-action-coach/`：可被 Agent 调用的行动教练 Skill，生成阻力分析、救援阶梯和深链接。
+- `hardware/`：Action Companion BLE 协议与 ESP32 固件骨架，支持单击、长按和振动反馈。
+
+浏览器扩展按 `browser-extension/README.md` 的步骤以“加载已解压的扩展程序”方式安装。硬件接线和 GATT UUID 见 `hardware/README.md`。
+
 ## 本地运行
 
 ```bash

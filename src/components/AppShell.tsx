@@ -137,7 +137,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             transition: "margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         >
-          {children}
+          <div className="page-doodle">
+            <span
+              className="doodle-tape hidden md:block"
+              style={{ top: "-3px", right: "8%", transform: "rotate(3deg)" }}
+            />
+            {children}
+          </div>
         </div>
       </main>
     </>

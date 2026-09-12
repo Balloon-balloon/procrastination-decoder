@@ -17,11 +17,11 @@ interface DiaryEntry {
 }
 
 const MOOD_OPTIONS = [
-  { value: 1, emoji: "😢", label: "很差" },
-  { value: 2, emoji: "😟", label: "不好" },
-  { value: 3, emoji: "😐", label: "一般" },
-  { value: 4, emoji: "🙂", label: "还好" },
-  { value: 5, emoji: "😄", label: "很好" },
+  { value: 1, emoji: "🥺", label: "很差" },
+  { value: 2, emoji: "😿", label: "不好" },
+  { value: 3, emoji: "🐙", label: "一般" },
+  { value: 4, emoji: "🐸", label: "还好" },
+  { value: 5, emoji: "🦊", label: "很好" },
 ];
 
 const MOOD_COLORS: Record<number, string> = {
@@ -168,7 +168,7 @@ export default function DiaryPage() {
             <p className="text-[10px] font-hand" style={{ color: "var(--text-muted)" }}>总记录</p>
           </div>
           <div className="glass-card rounded-xl p-3 text-center">
-            <p className="text-2xl">{avgMood !== "—" ? MOOD_OPTIONS[Math.round(Number(avgMood)) - 1]?.emoji : "📝"}</p>
+            <p className="text-2xl mood-emoji">{avgMood !== "—" ? MOOD_OPTIONS[Math.round(Number(avgMood)) - 1]?.emoji : "📝"}</p>
             <p className="text-[10px] font-hand" style={{ color: "var(--text-muted)" }}>平均心情 {avgMood}</p>
           </div>
           <div className="glass-card rounded-xl p-3 text-center">
@@ -206,7 +206,9 @@ export default function DiaryPage() {
                         border: form.mood === m.value ? `2px solid ${MOOD_COLORS[m.value]}` : "2px solid transparent",
                       }}
                     >
-                      <span className="text-xl">{m.emoji}</span>
+                      <span className={`text-xl mood-emoji mood-emoji-${m.value}${form.mood === m.value ? " mood-emoji-selected" : ""}`}>
+                        {m.emoji}
+                      </span>
                       <span className="text-[9px] font-hand" style={{ color: "var(--text-muted)" }}>{m.label}</span>
                     </button>
                   ))}
@@ -302,7 +304,7 @@ export default function DiaryPage() {
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl">{mood?.emoji}</span>
+                      <span className={`text-2xl mood-emoji mood-emoji-${entry.mood}`}>{mood?.emoji}</span>
                       <div>
                         <p className="font-hand text-sm font-bold" style={{ color: "var(--color-ink)" }}>
                           {formatDate(entry.date)}

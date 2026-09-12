@@ -1,5 +1,6 @@
 import { AppData, Task, SubTask, FocusSession, MoodEntry, UserProfile, Achievement } from "./types";
 import { generateId, getTodayKey, isSameDay } from "./utils";
+import { buildShrunkAction } from "./rescue";
 
 const STORAGE_KEY = "procrastination-decoder-data";
 
@@ -418,6 +419,43 @@ export function completeSubTask(data: AppData, subTaskId: string): AppData {
 
 export function deleteSubTask(data: AppData, subTaskId: string): AppData {
   return { ...data, subTasks: data.subTasks.filter((st) => st.id !== subTaskId) };
+}
+
+export function insertMicroSubTask(
+  data: AppData,
+  sourceSubTaskId: string,
+  newSubTaskId: string
+): AppData {
+  const source = data.subTasks.find((subTask) => subTask.id === sourceSubTaskId);
+  if (!source) return data;
+
+  const shrunk = buildShrunkAction(source.title, source.microStep);
+  const microSubTask: SubTask = {
+    id: newSubTaskId,
+    taskId: source.taskId,
+    title: shrunk.title,
+    description: `把“${source.title}”继续切细。现在只要求启动，不要求完成原步骤。`,
+    resistanceScore: Math.max(1, source.resistanceScore - 3),
+    resistanceType: "low-resistance",
+    resistanceReason: "这是更机械、更短的启动动作，用于绕过当前抗拒。",
+    estimatedMinutes: Math.max(5, Math.min(15, Math.ceil(source.estimatedMinutes / 3))),
+    recommendedOrder: source.recommendedOrder,
+    microStep: shrunk.microStep,
+    status: "todo",
+    completedAt: null,
+  };
+
+  const shiftedSubTasks = data.subTasks.map((subTask) =>
+    subTask.taskId === source.taskId &&
+    subTask.recommendedOrder >= source.recommendedOrder
+      ? { ...subTask, recommendedOrder: subTask.recommendedOrder + 1 }
+      : subTask
+  );
+
+  return {
+    ...data,
+    subTasks: [...shiftedSubTasks, microSubTask],
+  };
 }
 
 export function deleteSubTasksByTask(data: AppData, taskId: string): AppData {

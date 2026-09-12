@@ -1,0 +1,7 @@
+interface:
+  display_name: "WhyWait 行动教练"
+  short_description: "把逃避任务缩成五分钟内可执行的下一步"
+  brand_color: "#FF6B35"
+  default_prompt: "Use $whywait-action-coach to turn my avoided task into one low-resistance action and a WhyWait rescue link."
+policy:
+  allow_implicit_invocation: true

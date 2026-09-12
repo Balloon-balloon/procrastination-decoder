@@ -198,7 +198,7 @@ export default function DecodePage() {
                 灵感拆解
               </h1>
               <p className="font-handwritten text-sm" style={{ color: "var(--text-muted)" }}>
-                AI 驱动的任务拆解引擎 · 核心创新
+                把"我不想做"变成"我已经做了一半" ✨
               </p>
             </div>
           </motion.div>

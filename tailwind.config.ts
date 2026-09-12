@@ -43,10 +43,10 @@ const config: Config = {
       },
       fontFamily: {
         pixel: ['"Press Start 2P"', "monospace"],
-        body: ['"Noto Sans SC"', '"LXGW WenKai Screen"', "sans-serif"],
-        hand: ['"Patrick Hand"', '"Kalam"', '"LXGW WenKai Screen"', "cursive"],
-        sketch: ['"Amatic SC"', '"Gochi Hand"', '"LXGW WenKai Screen"', "cursive"],
-        handwritten: ['"Caveat"', '"Shadows Into Light"', '"LXGW WenKai Screen"', "cursive"],
+        body: ['"幼圆"', '"YouYuan"', '"Noto Sans SC"', '"LXGW WenKai Screen"', "sans-serif"],
+        hand: ['"幼圆"', '"YouYuan"', '"Patrick Hand"', '"Kalam"', '"LXGW WenKai Screen"', "cursive"],
+        sketch: ['"幼圆"', '"YouYuan"', '"Amatic SC"', '"Gochi Hand"', '"LXGW WenKai Screen"', "cursive"],
+        handwritten: ['"幼圆"', '"YouYuan"', '"Caveat"', '"Shadows Into Light"', '"LXGW WenKai Screen"', "cursive"],
       },
       animation: {
         "fade-in": "fadeIn 0.5s ease-in-out",
