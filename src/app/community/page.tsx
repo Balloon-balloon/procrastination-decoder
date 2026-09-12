@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { PageTransition, StaggerContainer, FadeInItem } from "@/components/Animations";
 import { motion } from "framer-motion";
-import { UsersThree, Tree, Cat, CaretRight } from "@phosphor-icons/react";
+import { UsersThree, ChatCircleDots, Cat, CaretRight } from "@phosphor-icons/react";
 import { playClickSound } from "@/lib/sound";
 import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
 
@@ -23,10 +23,10 @@ const MODULES = [
   },
   {
     href: "/treehole",
-    icon: Tree,
-    title: "树洞",
-    desc: "匿名倾诉，把压力和拖延故事留在这里",
-    tag: "匿名树洞",
+    icon: ChatCircleDots,
+    title: "广场",
+    desc: "发图发帖，评论点赞，大家一起凑热闹",
+    tag: "发帖互动",
     color: 1,
   },
   {

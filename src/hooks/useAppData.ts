@@ -30,6 +30,21 @@ export function useAppData() {
     setLoaded(true);
   }, []);
 
+  // 监听其他 useAppData 实例发出的登录/登出事件，保持同步
+  useEffect(() => {
+    const handleAuthChange = () => {
+      const user = getCurrentUser();
+      setCurrentUser(user);
+      if (user) {
+        setData(loadUserData(user.id));
+      } else {
+        setData(loadData());
+      }
+    };
+    window.addEventListener("pd-auth-change", handleAuthChange);
+    return () => window.removeEventListener("pd-auth-change", handleAuthChange);
+  }, []);
+
   // 保存数据（根据是否登录决定保存到哪里）
   useEffect(() => {
     if (loaded) {
@@ -52,6 +67,10 @@ export function useAppData() {
     // 加载该用户的数据
     const userData = loadUserData(user.id);
     setData(userData);
+    // 通知其他 useAppData 实例
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("pd-auth-change"));
+    }
   }, []);
 
   // 退出登录
@@ -60,6 +79,10 @@ export function useAppData() {
     setCurrentUser(null);
     // 切回全局默认数据
     setData(loadData());
+    // 通知其他 useAppData 实例
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("pd-auth-change"));
+    }
   }, []);
 
   return { data, update, loaded, currentUser, switchToUser, logout };
