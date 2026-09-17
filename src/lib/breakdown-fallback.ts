@@ -518,7 +518,13 @@ export async function requestBreakdown(params: {
 }): Promise<FallbackBreakdownResult> {
   // 静态部署直接使用 fallback
   if (IS_STATIC_DEPLOYMENT) {
-    return generateFallbackBreakdown(params.taskTitle, params.taskDescription);
+    const result = generateFallbackBreakdown(params.taskTitle, params.taskDescription);
+    if (params.fileSummary && params.fileSummary.includes("data:image/")) {
+      const imageCount = (params.fileSummary.match(/data:image\//g) || []).length;
+      result.taskUnderstanding += ` 用户上传了 ${imageCount} 张图片，请结合图片内容理解任务。`;
+      result.painPointResponse += " 你上传的图片我看到了（在线版 AI 可以识别图片内容，当前为离线模式）。";
+    }
+    return result;
   }
 
   try {

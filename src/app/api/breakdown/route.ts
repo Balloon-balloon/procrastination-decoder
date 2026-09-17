@@ -162,10 +162,6 @@ export async function POST(req: NextRequest) {
       ? `用户的目标/期望：${goal}`
       : "";
 
-    const fileContext = fileSummary
-      ? `用户上传的参考资料摘要：${fileSummary}`
-      : "";
-
     const dueContext = dueDate
       ? `截止日期：${dueDate}`
       : "";
@@ -173,6 +169,83 @@ export async function POST(req: NextRequest) {
     const stepsContext = desiredSteps
       ? `用户希望拆成约 ${desiredSteps} 个步骤。`
       : "请拆成 5-7 个步骤。";
+
+    // 构建 user message content，支持多模态（图片+文本）
+    const textContent = `请认真拆解以下任务。在拆解之前，请先仔细阅读所有信息，确保你的拆解是个性化的、针对性的。
+
+【任务】${taskTitle}
+${taskContext}
+${painContext}
+${goalContext}
+${dueContext}
+
+${userContext}
+${stepsContext}
+
+请务必：
+1. 先在 taskUnderstanding 中用一句话说明你理解了这个任务是什么
+2. 在 painPointResponse 中专门回应用户提到的卡点
+3. 在 executionPlan 中给出整体时间安排建议
+4. 子任务描述要详细，不能是空话
+5. microStep 要极其具体，是 5 分钟真的能做完的事
+
+请输出JSON格式的拆解结果。`;
+
+    // 判断是否有图片内容（base64 data URL）
+    const hasImages = fileSummary && fileSummary.includes("data:image/");
+    let userContent: any;
+
+    if (hasImages) {
+      // 多模态格式：把 fileSummary 拆分为图片和非图片文本
+      const parts: any[] = [{ type: "text", text: textContent }];
+      const lines = fileSummary!.split("\n");
+      const textParts: string[] = [];
+      let currentFile = "";
+
+      for (const line of lines) {
+        const match = line.match(/^【(.+?)】(.+)$/);
+        if (match) {
+          currentFile = match[1];
+          const content = match[2];
+          if (content.startsWith("data:image/")) {
+            parts.push({
+              type: "text",
+              text: `用户上传的图片：${currentFile}`,
+            });
+            parts.push({
+              type: "image_url",
+              image_url: { url: content, detail: "high" },
+            });
+          } else {
+            textParts.push(`【${currentFile}】${content}`);
+          }
+        }
+      }
+
+      if (textParts.length > 0) {
+        parts.push({
+          type: "text",
+          text: `用户上传的文本资料：\n${textParts.join("\n")}`,
+        });
+      }
+
+      userContent = parts;
+      // 有图片时使用支持视觉的模型
+      if (!process.env.AI_MODEL) {
+        if (process.env.DEEPSEEK_API_KEY && !process.env.OPENAI_API_KEY) {
+          // DeepSeek 不支持图片，但尝试用 deepseek-chat 处理文本部分
+          userContent = textContent + "\n\n用户上传的参考资料摘要：" + fileSummary!.replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, "[图片内容]");
+        } else {
+          model = "gpt-4o";
+        }
+      }
+    } else {
+      const fileContext = fileSummary
+        ? `用户上传的参考资料摘要：${fileSummary}`
+        : "";
+      userContent = textContent.replace("${dueContext}", dueContext).replace("${fileContext}", fileContext);
+      userContent = `${textContent}\n${fileContext}`;
+    }
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
@@ -186,26 +259,7 @@ export async function POST(req: NextRequest) {
           { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
-            content: `请认真拆解以下任务。在拆解之前，请先仔细阅读所有信息，确保你的拆解是个性化的、针对性的。
-
-【任务】${taskTitle}
-${taskContext}
-${painContext}
-${goalContext}
-${fileContext}
-${dueContext}
-
-${userContext}
-${stepsContext}
-
-请务必：
-1. 先在 taskUnderstanding 中用一句话说明你理解了这个任务是什么
-2. 在 painPointResponse 中专门回应用户提到的卡点
-3. 在 executionPlan 中给出整体时间安排建议
-4. 子任务描述要详细，不能是空话
-5. microStep 要极其具体，是 5 分钟真的能做完的事
-
-请输出JSON格式的拆解结果。`,
+            content: userContent,
           },
         ],
         max_tokens: 2500,

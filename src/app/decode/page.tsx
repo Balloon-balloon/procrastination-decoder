@@ -88,6 +88,13 @@ export default function DecodePage() {
         if (f.type.startsWith("text/") || f.name.match(/\.(txt|md|markdown)$/i)) {
           const text = await f.text();
           fileObj.content = text.slice(0, 5000);
+        } else if (f.type.startsWith("image/")) {
+          const reader = new FileReader();
+          const base64 = await new Promise<string>((resolve) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(f);
+          });
+          fileObj.content = base64;
         }
         return fileObj;
       })

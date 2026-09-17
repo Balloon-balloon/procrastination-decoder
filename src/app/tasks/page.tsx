@@ -21,6 +21,7 @@ import { formatEstimatedTime } from "@/lib/time";
 import { TaskBreakdownResult } from "@/components/TaskBreakdownResult";
 import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
 import { requestBreakdown } from "@/lib/breakdown-fallback";
+import { requestAdjustPlan } from "@/lib/adjust-plan-fallback";
 import { PageTransition, StaggerContainer, FadeInItem, HoverCard } from "@/components/Animations";
 import {
   Plus,
@@ -252,6 +253,13 @@ export default function TasksPage() {
                       if (f.type.startsWith("text/") || f.name.match(/\.(txt|md|markdown)$/i)) {
                         const text = await f.text();
                         fileObj.content = text.slice(0, 5000);
+                      } else if (f.type.startsWith("image/")) {
+                        const reader = new FileReader();
+                        const base64 = await new Promise<string>((resolve) => {
+                          reader.onload = () => resolve(reader.result as string);
+                          reader.readAsDataURL(f);
+                        });
+                        fileObj.content = base64;
                       }
                       return fileObj;
                     })
@@ -871,19 +879,13 @@ function TaskCard({
                 const completedSteps = subTasks.filter(s => s.status === "completed").map(s => s.title);
                 const remainingSteps = subTasks.filter(s => s.status !== "completed").map(s => s.title);
                 const totalMinutes = subTasks.reduce((sum, s) => sum + s.estimatedMinutes, 0);
-                const res = await fetch("/api/adjust-plan", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    taskTitle: task.title,
-                    completedSteps,
-                    remainingSteps,
-                    progressText,
-                    totalMinutes,
-                  }),
+                return await requestAdjustPlan({
+                  taskTitle: task.title,
+                  completedSteps,
+                  remainingSteps,
+                  progressText,
+                  totalMinutes,
                 });
-                const data = await res.json();
-                return data.suggestion || "建议已收到，继续加油！";
               }}
             />
           )}
