@@ -461,3 +461,40 @@ export function insertMicroSubTask(
 export function deleteSubTasksByTask(data: AppData, taskId: string): AppData {
   return { ...data, subTasks: data.subTasks.filter((st) => st.taskId !== taskId) };
 }
+
+// 用多个更细的子步骤替换一个子步骤
+export function replaceSubTaskWithSteps(
+  data: AppData,
+  subTaskId: string,
+  newSteps: Omit<SubTask, "id" | "taskId" | "status" | "completedAt">[]
+): AppData {
+  const source = data.subTasks.find((st) => st.id === subTaskId);
+  if (!source) return data;
+
+  const baseOrder = source.recommendedOrder;
+
+  // 删除原步骤
+  const withoutSource = data.subTasks.filter((st) => st.id !== subTaskId);
+
+  // 后面的步骤往后移
+  const shifted = withoutSource.map((st) =>
+    st.taskId === source.taskId && st.recommendedOrder > baseOrder
+      ? { ...st, recommendedOrder: st.recommendedOrder + newSteps.length - 1 }
+      : st
+  );
+
+  // 插入新步骤
+  const newSubTasks: SubTask[] = newSteps.map((step, i) => ({
+    ...step,
+    id: generateId(),
+    taskId: source.taskId,
+    status: "todo",
+    completedAt: null,
+    recommendedOrder: baseOrder + i,
+  }));
+
+  return {
+    ...data,
+    subTasks: [...shifted, ...newSubTasks],
+  };
+}

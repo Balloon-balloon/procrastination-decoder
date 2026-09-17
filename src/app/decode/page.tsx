@@ -13,6 +13,7 @@ import {
   completeSubTask,
   startSubTask,
   deleteSubTask,
+  replaceSubTaskWithSteps,
 } from "@/lib/store";
 import { motion } from "framer-motion";
 import {
@@ -480,6 +481,7 @@ export default function DecodePage() {
                     onComplete={(subTaskId) => update((prev) => completeSubTask(prev, subTaskId))}
                     onStart={(subTaskId) => update((prev) => startSubTask(prev, subTaskId))}
                     onDelete={(subTaskId) => update((prev) => deleteSubTask(prev, subTaskId))}
+                    onRebreakdown={(subTaskId, newSteps) => update((prev) => replaceSubTaskWithSteps(prev, subTaskId, newSteps))}
                   />
                 )}
                 {selectedTask.breakdownStatus === "failed" && (

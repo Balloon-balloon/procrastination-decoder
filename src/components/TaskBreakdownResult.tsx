@@ -5,8 +5,10 @@ import { SubTask, ResistanceType } from "@/lib/types";
 import {
   Check, Play, Clock, Zap, Trash2, ChevronDown, ChevronUp,
   Sparkles, Lightbulb, Calendar, Send, Loader2,
+  Layers, AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { requestSubBreakdown, MicroSubStep } from "@/lib/sub-breakdown";
 
 const RESISTANCE_CONFIG: Record<
   ResistanceType,
@@ -74,7 +76,7 @@ interface Props {
   onComplete: (subTaskId: string) => void;
   onStart: (subTaskId: string) => void;
   onDelete: (subTaskId: string) => void;
-  onAdjustPlan?: (progressText: string) => Promise<string>;
+  onRebreakdown?: (subTaskId: string, newSteps: MicroSubStep[]) => void;
 }
 
 export function TaskBreakdownResult({
@@ -87,13 +89,13 @@ export function TaskBreakdownResult({
   onComplete,
   onStart,
   onDelete,
-  onAdjustPlan,
+  onRebreakdown,
 }: Props) {
   const router = useRouter();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [progressInput, setProgressInput] = useState("");
-  const [adjusting, setAdjusting] = useState(false);
-  const [adjustResult, setAdjustResult] = useState<string | null>(null);
+  const [breakingDownId, setBreakingDownId] = useState<string | null>(null);
+  const [breakdownFeedback, setBreakdownFeedback] = useState<Record<string, string>>({});
+  const [breakdownError, setBreakdownError] = useState<string | null>(null);
 
   if (subTasks.length === 0) return null;
 
@@ -108,16 +110,30 @@ export function TaskBreakdownResult({
     setExpandedId(expandedId === id ? null : id);
   };
 
-  const handleAdjust = async () => {
-    if (!progressInput.trim() || !onAdjustPlan) return;
-    setAdjusting(true);
+  const handleRebreakdown = async (subTask: SubTask) => {
+    if (!onRebreakdown) return;
+    const feedback = breakdownFeedback[subTask.id]?.trim();
+    if (!feedback) return;
+
+    setBreakingDownId(subTask.id);
+    setBreakdownError(null);
     try {
-      const result = await onAdjustPlan(progressInput);
-      setAdjustResult(result);
+      const result = await requestSubBreakdown({
+        stepTitle: subTask.title,
+        stepDescription: subTask.description,
+        userFeedback: feedback,
+        resistanceScore: subTask.resistanceScore,
+        taskTitle,
+      });
+      if (result.steps && result.steps.length > 0) {
+        onRebreakdown(subTask.id, result.steps);
+      } else {
+        setBreakdownError("拆解失败，请重试");
+      }
     } catch (e) {
-      setAdjustResult("调整失败，请稍后再试～");
+      setBreakdownError("拆解失败，请重试");
     }
-    setAdjusting(false);
+    setBreakingDownId(null);
   };
 
   return (
@@ -227,6 +243,7 @@ export function TaskBreakdownResult({
           const isCompleted = subTask.status === "completed";
           const isInProgress = subTask.status === "in-progress";
           const isExpanded = expandedId === subTask.id;
+          const isBreaking = breakingDownId === subTask.id;
 
           return (
             <div
@@ -392,6 +409,49 @@ export function TaskBreakdownResult({
                     </p>
                   </div>
 
+                  {/* 重新拆解区域 */}
+                  {!isCompleted && onRebreakdown && (
+                    <div className="pt-2" style={{ borderTop: "1px solid var(--divider)" }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Layers className="w-3.5 h-3.5" style={{ color: "var(--color-neon-orange)" }} />
+                        <p className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>
+                          这步太难？AI 帮你拆成更细的小步骤
+                        </p>
+                      </div>
+                      <input
+                        type="text"
+                        value={breakdownFeedback[subTask.id] || ""}
+                        onChange={(e) => setBreakdownFeedback(prev => ({ ...prev, [subTask.id]: e.target.value }))}
+                        placeholder="说说哪一步卡住了，比如：不知道怎么开始/看不懂某个概念..."
+                        className="w-full px-3 py-2 rounded-lg text-xs mb-2"
+                        style={{ background: "rgba(0,0,0,0.05)", border: "1px solid var(--divider)", color: "var(--text-primary)" }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleRebreakdown(subTask);
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => handleRebreakdown(subTask)}
+                        disabled={isBreaking || !breakdownFeedback[subTask.id]?.trim()}
+                        className="w-full py-2 rounded-lg text-xs font-medium text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        style={{ background: "var(--color-neon-orange)" }}
+                      >
+                        {isBreaking ? (
+                          <><Loader2 className="w-3.5 h-3.5 animate-spin" /> AI 拆解中...</>
+                        ) : (
+                          <><Sparkles className="w-3.5 h-3.5" /> 重新拆解这步</>
+                        )}
+                      </button>
+                      {breakdownError && isBreaking === false && breakingDownId === null && (
+                        <div className="mt-2 flex items-center gap-1 text-xs" style={{ color: "#E74C3C" }}>
+                          <AlertCircle className="w-3 h-3" />
+                          {breakdownError}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* 今日完成输入 */}
                   {!isCompleted && (
                     <div className="pt-2" style={{ borderTop: "1px solid var(--divider)" }}>
@@ -430,43 +490,6 @@ export function TaskBreakdownResult({
           );
         })}
       </div>
-
-      {/* 动态调整计划 */}
-      {onAdjustPlan && (
-        <div className="rounded-xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--card-border)" }}>
-          <h4 className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-            <Sparkles className="w-4 h-4" style={{ color: "var(--color-neon-orange)" }} />
-            调整后续计划
-          </h4>
-          <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
-            告诉我你今天完成了什么，AI 帮你调整接下来的节奏
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={progressInput}
-              onChange={(e) => setProgressInput(e.target.value)}
-              placeholder="比如：我已经做完了前两步，但是第三步有点卡住了..."
-              className="flex-1 px-3 py-2 rounded-lg text-xs"
-              style={{ background: "rgba(0,0,0,0.05)", border: "1px solid var(--divider)", color: "var(--text-primary)" }}
-            />
-            <button
-              onClick={handleAdjust}
-              disabled={adjusting || !progressInput.trim()}
-              className="px-3 py-2 rounded-lg text-xs font-medium text-white flex items-center gap-1 disabled:opacity-50"
-              style={{ background: "var(--color-neon-orange)" }}
-            >
-              {adjusting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              {adjusting ? "分析中" : "调整"}
-            </button>
-          </div>
-          {adjustResult && (
-            <div className="mt-3 p-3 rounded-lg text-xs leading-relaxed" style={{ background: "rgba(255,107,53,0.08)", border: "1px solid rgba(255,107,53,0.15)", color: "var(--text-secondary)" }}>
-              {adjustResult}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* 底部提示 */}
       <div className="text-center text-xs pt-2" style={{ color: "var(--text-muted)" }}>

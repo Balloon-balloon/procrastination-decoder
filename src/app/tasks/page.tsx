@@ -14,6 +14,7 @@ import {
   completeSubTask,
   startSubTask,
   deleteSubTask,
+  replaceSubTaskWithSteps,
 } from "@/lib/store";
 import { EstimatedTimeUnit, Task, SubTask } from "@/lib/types";
 import { formatDate, getEffectivePriority } from "@/lib/utils";
@@ -21,7 +22,6 @@ import { formatEstimatedTime } from "@/lib/time";
 import { TaskBreakdownResult } from "@/components/TaskBreakdownResult";
 import { IS_STATIC_DEPLOYMENT } from "@/lib/deployment";
 import { requestBreakdown } from "@/lib/breakdown-fallback";
-import { requestAdjustPlan } from "@/lib/adjust-plan-fallback";
 import { PageTransition, StaggerContainer, FadeInItem, HoverCard } from "@/components/Animations";
 import {
   Plus,
@@ -734,6 +734,9 @@ export default function TasksPage() {
                 onStartSubTask={(subTaskId) =>
                   update((prev) => startSubTask(prev, subTaskId))
                 }
+                onRebreakdown={(subTaskId, newSteps) =>
+                  update((prev) => replaceSubTaskWithSteps(prev, subTaskId, newSteps))
+                }
               />
                 </HoverCard>
               </FadeInItem>
@@ -758,6 +761,7 @@ function TaskCard({
   onStartSubTask,
   onEdit,
   onDeleteSubTask,
+  onRebreakdown,
 }: {
   task: Task;
   subTasks: SubTask[];
@@ -770,6 +774,7 @@ function TaskCard({
   onStartSubTask: (subTaskId: string) => void;
   onEdit: () => void;
   onDeleteSubTask: (subTaskId: string) => void;
+  onRebreakdown: (subTaskId: string, newSteps: any[]) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const effectivePriority = getEffectivePriority(task.priority, task.dueDate);
@@ -875,18 +880,7 @@ function TaskCard({
               onComplete={onCompleteSubTask}
               onStart={onStartSubTask}
               onDelete={onDeleteSubTask}
-              onAdjustPlan={async (progressText) => {
-                const completedSteps = subTasks.filter(s => s.status === "completed").map(s => s.title);
-                const remainingSteps = subTasks.filter(s => s.status !== "completed").map(s => s.title);
-                const totalMinutes = subTasks.reduce((sum, s) => sum + s.estimatedMinutes, 0);
-                return await requestAdjustPlan({
-                  taskTitle: task.title,
-                  completedSteps,
-                  remainingSteps,
-                  progressText,
-                  totalMinutes,
-                });
-              }}
+              onRebreakdown={onRebreakdown}
             />
           )}
 
