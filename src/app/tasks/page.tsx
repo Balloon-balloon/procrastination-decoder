@@ -15,6 +15,7 @@ import {
   startSubTask,
   deleteSubTask,
   replaceSubTaskWithSteps,
+  applyCompletionAdjustment,
 } from "@/lib/store";
 import { EstimatedTimeUnit, Task, SubTask } from "@/lib/types";
 import { formatDate, getEffectivePriority } from "@/lib/utils";
@@ -737,6 +738,13 @@ export default function TasksPage() {
                 onRebreakdown={(subTaskId, newSteps) =>
                   update((prev) => replaceSubTaskWithSteps(prev, subTaskId, newSteps))
                 }
+                onApplyAdjustment={(subTaskId, feedback, remaining) => {
+                  const targetStep = feedback.targetStepIndex !== undefined && remaining[feedback.targetStepIndex]
+                    ? remaining[feedback.targetStepIndex].id
+                    : undefined;
+                  update((prev) => applyCompletionAdjustment(prev, subTaskId, feedback.adjustmentType, targetStep, feedback.newSteps));
+                  showToast("计划已调整，继续加油！", "success");
+                }}
               />
                 </HoverCard>
               </FadeInItem>
@@ -762,6 +770,7 @@ function TaskCard({
   onEdit,
   onDeleteSubTask,
   onRebreakdown,
+  onApplyAdjustment,
 }: {
   task: Task;
   subTasks: SubTask[];
@@ -775,6 +784,7 @@ function TaskCard({
   onEdit: () => void;
   onDeleteSubTask: (subTaskId: string) => void;
   onRebreakdown: (subTaskId: string, newSteps: any[]) => void;
+  onApplyAdjustment: (completedSubTaskId: string, feedback: any, remainingSteps: SubTask[]) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const effectivePriority = getEffectivePriority(task.priority, task.dueDate);
@@ -881,6 +891,7 @@ function TaskCard({
               onStart={onStartSubTask}
               onDelete={onDeleteSubTask}
               onRebreakdown={onRebreakdown}
+              onApplyAdjustment={onApplyAdjustment}
             />
           )}
 

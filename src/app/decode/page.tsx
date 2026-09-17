@@ -14,6 +14,7 @@ import {
   startSubTask,
   deleteSubTask,
   replaceSubTaskWithSteps,
+  applyCompletionAdjustment,
 } from "@/lib/store";
 import { motion } from "framer-motion";
 import {
@@ -482,6 +483,13 @@ export default function DecodePage() {
                     onStart={(subTaskId) => update((prev) => startSubTask(prev, subTaskId))}
                     onDelete={(subTaskId) => update((prev) => deleteSubTask(prev, subTaskId))}
                     onRebreakdown={(subTaskId, newSteps) => update((prev) => replaceSubTaskWithSteps(prev, subTaskId, newSteps))}
+                    onApplyAdjustment={(subTaskId, feedback, remaining) => {
+                      const targetStep = feedback.targetStepIndex !== undefined && remaining[feedback.targetStepIndex]
+                        ? remaining[feedback.targetStepIndex].id
+                        : undefined;
+                      update((prev) => applyCompletionAdjustment(prev, subTaskId, feedback.adjustmentType, targetStep, feedback.newSteps));
+                      showToast("计划已调整，继续加油！", "success");
+                    }}
                   />
                 )}
                 {selectedTask.breakdownStatus === "failed" && (

@@ -498,3 +498,47 @@ export function replaceSubTaskWithSteps(
     subTasks: [...shifted, ...newSubTasks],
   };
 }
+
+// 根据完成反馈应用调整方案
+export function applyCompletionAdjustment(
+  data: AppData,
+  completedSubTaskId: string,
+  adjustmentType: "rebreakdown" | "reorder" | "add-rest" | "merge" | undefined,
+  targetStepId: string | undefined,
+  newSteps?: Omit<SubTask, "id" | "taskId" | "status" | "completedAt">[],
+): AppData {
+  // 先标记完成
+  let newData = completeSubTask(data, completedSubTaskId);
+
+  if (adjustmentType === "rebreakdown" && targetStepId && newSteps && newSteps.length > 0) {
+    newData = replaceSubTaskWithSteps(newData, targetStepId, newSteps);
+  }
+
+  if (adjustmentType === "reorder") {
+    // 把阻力最低的剩余步骤排到最前面
+    const completed = newData.subTasks.find(st => st.id === completedSubTaskId);
+    if (completed) {
+      const taskSubTasks = newData.subTasks.filter(st => st.taskId === completed.taskId && st.status !== "completed");
+      if (taskSubTasks.length >= 2) {
+        // 找到阻力最低和最高的
+        const sorted = [...taskSubTasks].sort((a, b) => a.resistanceScore - b.resistanceScore);
+        const easiest = sorted[0];
+        const hardest = sorted[sorted.length - 1];
+        // 如果第一步是最难的，把最简单的换到第一位
+        const byOrder = [...taskSubTasks].sort((a, b) => a.recommendedOrder - b.recommendedOrder);
+        if (byOrder[0].id === hardest.id && easiest.id !== hardest.id) {
+          newData = {
+            ...newData,
+            subTasks: newData.subTasks.map(st => {
+              if (st.id === easiest.id) return { ...st, recommendedOrder: byOrder[0].recommendedOrder };
+              if (st.id === hardest.id) return { ...st, recommendedOrder: easiest.recommendedOrder };
+              return st;
+            }),
+          };
+        }
+      }
+    }
+  }
+
+  return newData;
+}

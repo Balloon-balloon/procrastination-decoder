@@ -5,10 +5,11 @@ import { SubTask, ResistanceType } from "@/lib/types";
 import {
   Check, Play, Clock, Zap, Trash2, ChevronDown, ChevronUp,
   Sparkles, Lightbulb, Calendar, Send, Loader2,
-  Layers, AlertCircle,
+  Layers, AlertCircle, ThumbsUp, RefreshCw, XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { requestSubBreakdown, MicroSubStep } from "@/lib/sub-breakdown";
+import { requestCompletionFeedback, CompletionFeedback } from "@/lib/completion-feedback";
 
 const RESISTANCE_CONFIG: Record<
   ResistanceType,
@@ -77,6 +78,7 @@ interface Props {
   onStart: (subTaskId: string) => void;
   onDelete: (subTaskId: string) => void;
   onRebreakdown?: (subTaskId: string, newSteps: MicroSubStep[]) => void;
+  onApplyAdjustment?: (completedSubTaskId: string, feedback: CompletionFeedback, remainingSteps: SubTask[]) => void;
 }
 
 export function TaskBreakdownResult({
@@ -90,12 +92,16 @@ export function TaskBreakdownResult({
   onStart,
   onDelete,
   onRebreakdown,
+  onApplyAdjustment,
 }: Props) {
   const router = useRouter();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [breakingDownId, setBreakingDownId] = useState<string | null>(null);
   const [breakdownFeedback, setBreakdownFeedback] = useState<Record<string, string>>({});
   const [breakdownError, setBreakdownError] = useState<string | null>(null);
+  const [completionInput, setCompletionInput] = useState<Record<string, string>>({});
+  const [completionLoadingId, setCompletionLoadingId] = useState<string | null>(null);
+  const [completionResult, setCompletionResult] = useState<Record<string, CompletionFeedback>>({});
 
   if (subTasks.length === 0) return null;
 
@@ -108,6 +114,55 @@ export function TaskBreakdownResult({
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
+  };
+
+  const handleComplete = async (subTask: SubTask) => {
+    const feedback = completionInput[subTask.id]?.trim();
+    if (!feedback) {
+      // 没有输入直接完成
+      onComplete(subTask.id);
+      return;
+    }
+
+    setCompletionLoadingId(subTask.id);
+    try {
+      const allRemaining = subTasks.filter(s => s.status !== "completed" && s.id !== subTask.id);
+      const result = await requestCompletionFeedback({
+        stepTitle: subTask.title,
+        stepDescription: subTask.description,
+        userFeedback: feedback,
+        completedCount: completedCount + 1,
+        totalCount: subTasks.length,
+        remainingSteps: allRemaining,
+        taskTitle,
+      });
+      setCompletionResult(prev => ({ ...prev, [subTask.id]: result }));
+    } finally {
+      setCompletionLoadingId(null);
+    }
+  };
+
+  const acceptAdjustmentAndComplete = (subTask: SubTask, feedback: CompletionFeedback) => {
+    if (onApplyAdjustment) {
+      const allRemaining = subTasks.filter(s => s.status !== "completed" && s.id !== subTask.id);
+      onApplyAdjustment(subTask.id, feedback, allRemaining);
+    } else {
+      onComplete(subTask.id);
+    }
+    setCompletionResult(prev => {
+      const next = { ...prev };
+      delete next[subTask.id];
+      return next;
+    });
+  };
+
+  const skipAdjustmentAndComplete = (subTaskId: string) => {
+    onComplete(subTaskId);
+    setCompletionResult(prev => {
+      const next = { ...prev };
+      delete next[subTaskId];
+      return next;
+    });
   };
 
   const handleRebreakdown = async (subTask: SubTask) => {
@@ -452,36 +507,134 @@ export function TaskBreakdownResult({
                     </div>
                   )}
 
-                  {/* 今日完成输入 */}
+                  {/* 今日完成输入 + AI反馈 */}
                   {!isCompleted && (
                     <div className="pt-2" style={{ borderTop: "1px solid var(--divider)" }}>
-                      <p className="text-xs font-bold mb-2" style={{ color: "var(--text-primary)" }}>
-                        ✅ 今天这步做得怎么样？
-                      </p>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="说说今天完成了什么..."
-                          className="flex-1 px-3 py-2 rounded-lg text-xs"
-                          style={{ background: "rgba(0,0,0,0.05)", border: "1px solid var(--divider)", color: "var(--text-primary)" }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              const val = (e.target as HTMLInputElement).value;
-                              if (val.trim()) {
-                                onComplete(subTask.id);
-                                (e.target as HTMLInputElement).value = "";
-                              }
-                            }
-                          }}
-                        />
-                        <button
-                          onClick={() => onComplete(subTask.id)}
-                          className="px-3 py-2 rounded-lg text-xs font-medium text-white"
-                          style={{ background: "var(--color-neon-green)" }}
-                        >
-                          完成
-                        </button>
-                      </div>
+                      {!completionResult[subTask.id] && !completionLoadingId && (
+                        <>
+                          <p className="text-xs font-bold mb-2" style={{ color: "var(--text-primary)" }}>
+                            ✅ 今天这步做得怎么样？
+                          </p>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={completionInput[subTask.id] || ""}
+                              onChange={(e) => setCompletionInput(prev => ({ ...prev, [subTask.id]: e.target.value }))}
+                              placeholder="说说今天完成了什么，感觉怎么样..."
+                              className="flex-1 px-3 py-2 rounded-lg text-xs"
+                              style={{ background: "rgba(0,0,0,0.05)", border: "1px solid var(--divider)", color: "var(--text-primary)" }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  const val = (e.target as HTMLInputElement).value;
+                                  if (val.trim()) {
+                                    handleComplete(subTask);
+                                  }
+                                }
+                              }}
+                            />
+                            <button
+                              onClick={() => handleComplete(subTask)}
+                              disabled={completionLoadingId === subTask.id}
+                              className="px-3 py-2 rounded-lg text-xs font-medium text-white flex items-center gap-1 disabled:opacity-50"
+                              style={{ background: "var(--color-neon-green)" }}
+                            >
+                              {completionLoadingId === subTask.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5" />
+                              )}
+                              {completionLoadingId === subTask.id ? "分析中" : "完成"}
+                            </button>
+                          </div>
+                          <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
+                            💡 写下感受，AI 会给你点评并看看后续计划要不要调整
+                          </p>
+                        </>
+                      )}
+
+                      {completionLoadingId === subTask.id && (
+                        <div className="py-3 flex items-center justify-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" style={{ color: "var(--color-neon-orange)" }} />
+                          <span className="text-xs" style={{ color: "var(--text-muted)" }}>AI 正在回顾你的进展...</span>
+                        </div>
+                      )}
+
+                      {/* AI 评语结果 */}
+                      {completionResult[subTask.id] && (
+                        <div className="space-y-2">
+                          {/* 评语卡片 */}
+                          <div className="p-3 rounded-lg" style={{ background: "rgba(46,204,113,0.08)", border: "1px solid rgba(46,204,113,0.2)" }}>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <ThumbsUp className="w-3.5 h-3.5" style={{ color: "var(--color-neon-green)" }} />
+                              <span className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>AI 点评</span>
+                            </div>
+                            <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                              {completionResult[subTask.id].praise}
+                            </p>
+                            <p className="text-xs leading-relaxed mt-1.5" style={{ color: "var(--text-muted)" }}>
+                              {completionResult[subTask.id].reflection}
+                            </p>
+                          </div>
+
+                          {/* 调整建议 */}
+                          {completionResult[subTask.id].needsAdjustment && (
+                            <div className="p-3 rounded-lg" style={{ background: "rgba(255,107,53,0.08)", border: "1px solid rgba(255,107,53,0.2)" }}>
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <RefreshCw className="w-3.5 h-3.5" style={{ color: "var(--color-neon-orange)" }} />
+                                <span className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>建议调整后续计划</span>
+                              </div>
+                              <p className="text-xs leading-relaxed mb-2" style={{ color: "var(--text-secondary)" }}>
+                                {completionResult[subTask.id].adjustmentReason}
+                              </p>
+                              {completionResult[subTask.id].reorderNote && (
+                                <p className="text-xs leading-relaxed mb-2" style={{ color: "var(--text-primary)", fontWeight: 500 }}>
+                                  📝 {completionResult[subTask.id].reorderNote}
+                                </p>
+                              )}
+                              {completionResult[subTask.id].newSteps && completionResult[subTask.id].newSteps!.length > 0 && (
+                                <div className="mb-2">
+                                  <p className="text-xs font-bold mb-1" style={{ color: "var(--text-primary)" }}>拆解后步骤：</p>
+                                  <div className="space-y-1">
+                                    {completionResult[subTask.id].newSteps!.map((s, i) => (
+                                      <div key={i} className="flex items-start gap-2 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                                        <span className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: "rgba(255,107,53,0.2)", color: "var(--color-neon-orange)" }}>{i + 1}</span>
+                                        <span>{s.title}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="flex gap-2 mt-3">
+                                <button
+                                  onClick={() => acceptAdjustmentAndComplete(subTask, completionResult[subTask.id]!)}
+                                  className="flex-1 py-1.5 rounded-lg text-xs font-medium text-white"
+                                  style={{ background: "var(--color-neon-orange)" }}
+                                >
+                                  接受调整
+                                </button>
+                                <button
+                                  onClick={() => skipAdjustmentAndComplete(subTask.id)}
+                                  className="flex-1 py-1.5 rounded-lg text-xs font-medium"
+                                  style={{ background: "rgba(0,0,0,0.05)", color: "var(--text-muted)" }}
+                                >
+                                  不用了
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 不需要调整时的确认按钮 */}
+                          {!completionResult[subTask.id].needsAdjustment && (
+                            <button
+                              onClick={() => skipAdjustmentAndComplete(subTask.id)}
+                              className="w-full py-2 rounded-lg text-xs font-medium text-white flex items-center justify-center gap-1.5"
+                              style={{ background: "var(--color-neon-green)" }}
+                            >
+                              <Check className="w-3.5 h-3.5" /> 好的，继续下一步
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
